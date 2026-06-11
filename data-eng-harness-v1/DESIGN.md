@@ -1,4 +1,4 @@
-# DESIGN.md — Documento de diseño del arnés harness-v3-ai-generated
+# DESIGN.md — Documento de diseño del arnés data-eng-harness-v1
 
 > Explica y justifica cada elemento del arnés con trazabilidad a los principios P1–P14 y al corpus.
 > Se completa progresivamente en los bloques B2–B8.
@@ -398,7 +398,7 @@ cd data-eng-harness
 Apuntar Claude Code al plugin del adaptador:
 
 ```
-claude --plugin harness-v3-ai-generated/adapters/claude-code/
+claude --plugin data-eng-harness-v1/adapters/claude-code/
 ```
 
 O añadir el directorio `adapters/claude-code/` como plugin en la configuración del proyecto de Claude Code.
@@ -472,7 +472,7 @@ Esta sección registra las decisiones de diseño del arnés con sus justificacio
 - **(P2, economía de contexto aplicada al propio arnés)** el orquestador, al arrancar una sesión fresca y amnésica, necesita "cuál es la siguiente tarea" en un fichero corto, no la especificación completa — consistente con `AGENTS.md` (~100 líneas) como mapa de repositorio (OpenAI Codex) y con la separación `specs/*` vs `@fix_plan.md` (Huntley).
 - **Precedente del corpus**: el mismo trío intención/estado/notas aparece en Anthropic (`app_spec` + `feature_list.json` + fichero de progreso), Huntley (`specs/*` + `@fix_plan.md` + `AGENT.md`) y OpenAI Codex (`product-specs/` + `exec-plans/active/` + `AGENTS.md`). La estratificación `soft_spec.md` → `hard_spec.md` → `state.json`/`progress.md` aplica el mismo patrón al propio arnés.
 
-> Nota de migración (D10): `SPEC.md` como artefacto de estado activo del meta-proyecto queda sustituido por `state.json` + `progress.md`. El fichero `SPEC.md` de la raíz del repositorio se conserva físicamente como referencia histórica de las migraciones B9/B10, pero ningún elemento de `harness-v3-ai-generated/` lo trata como capa de estado activa.
+> Nota de migración (D10): `SPEC.md` como artefacto de estado activo del meta-proyecto queda sustituido por `state.json` + `progress.md`. El fichero `SPEC.md` de la raíz del repositorio se conserva físicamente como referencia histórica de las migraciones B9/B10, pero ningún elemento de `data-eng-harness-v1/` lo trata como capa de estado activa.
 
 ### 9.2 Justificación de D13 (evaluador ejecutor + sensores invocables + contrato bidireccional)
 

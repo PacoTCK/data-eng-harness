@@ -1,6 +1,6 @@
 # Best Practices del arnés
 
-> Principios P1-P14 con trazabilidad al corpus de diseño (reading-pack-harness-engineering-v2/) y a los elementos del arnés harness-v3-ai-generated.
+> Principios P1-P14 con trazabilidad al corpus de diseño (reading-pack-harness-engineering-v2/) y a los elementos del arnés data-eng-harness-v1.
 > Decisiones de diseño D1-D13 con sus justificaciones.
 > Backlog de decisiones abiertas R1-R4.
 
@@ -80,12 +80,12 @@ Decisiones que no están resueltas en la versión actual del arnés y afectan al
 
 ## Declaración de carpetas prohibidas
 
-> Se verifica que los bloques B1-B8 no han usado ni referenciado las carpetas `harness/` ni `harness-v2-three-agents/` en ningún artefacto del entregable `harness-v3-ai-generated/`.
+> Se verifica que los bloques B1-B8 no han usado ni referenciado las carpetas `harness/` ni `harness-v2-three-agents/` en ningún artefacto del entregable `data-eng-harness-v1/`.
 
-**Método de verificación:** búsqueda recursiva de texto en todos los ficheros `.md`, `.json`, `.yaml` y `.yml` del directorio `harness-v3-ai-generated/` usando `grep -r "harness-v2-three-agents\|harness/" .` desde ese directorio.
+**Método de verificación:** búsqueda recursiva de texto en todos los ficheros `.md`, `.json`, `.yaml` y `.yml` del directorio `data-eng-harness-v1/` usando `grep -r "harness-v2-three-agents\|harness/" .` desde ese directorio.
 
 **Fecha de verificación:** 2026-06-09.
 
-**Resultado:** ningún fichero en `harness-v3-ai-generated/` contiene referencias a `harness/` ni a `harness-v2-three-agents/`. La verificación devolvió `No matches found`.
+**Resultado:** ningún fichero en `data-eng-harness-v1/` contiene referencias a `harness/` ni a `harness-v2-three-agents/`. La verificación devolvió `No matches found`.
 
-Los directorios `harness/` (arnés v1) y `harness-v2-three-agents/` (arnés v2) existen en el repositorio raíz como implementaciones anteriores independientes. No se han reutilizado ni referenciado durante el diseño de harness-v3-ai-generated; el v3 fue diseñado desde cero a partir del corpus de artículos de investigación.
+Los directorios `harness/` (arnés v1) y `harness-v2-three-agents/` (arnés v2) existen en el repositorio raíz como implementaciones anteriores independientes. No se han reutilizado ni referenciado durante el diseño de data-eng-harness-v1; el v3 fue diseñado desde cero a partir del corpus de artículos de investigación.

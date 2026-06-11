@@ -12,7 +12,7 @@
   },
 
   "task_id": "{BLOQUE_ID}-{numero_secuencial}",
-  "workflow_id": "{nombre del workflow, ej: harness-v3-ai-generated}",
+  "workflow_id": "{nombre del workflow, ej: data-eng-harness-v1}",
   "parent_block": "{BLOQUE_ID}",
   "created": "YYYY-MM-DD",
   "handoff_type": "planner_to_implementador",

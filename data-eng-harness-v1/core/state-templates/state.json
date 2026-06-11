@@ -8,7 +8,7 @@
     "regenerable": "Este fichero es una proyección derivada de hard_spec.md + el estado real del repo (git log). Si se corrompe o se pierde, es regenerable inspeccionando el historial de git y el contenido de tasks/."
   },
 
-  "workflow_id": "{nombre del workflow, ej: harness-v3-ai-generated}",
+  "workflow_id": "{nombre del workflow, ej: data-eng-harness-v1}",
   "spec_reference": "hard_spec.md",
   "last_updated": "YYYY-MM-DD",
 

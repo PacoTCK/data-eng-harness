@@ -15,7 +15,7 @@ Cada tarea sigue un ciclo estructurado: el **planificador** decide qué hacer y 
 ## Estructura
 
 ```
-harness-v3-ai-generated/
+data-eng-harness-v1/
 │
 ├── core/                          # Runtime portable, model-agnostic. No modificar por proyecto.
 │   ├── orchestration/             # Ciclo de 4 agentes (cycle.md) y condiciones de parada
@@ -64,7 +64,7 @@ cd data-eng-harness
 ### Apuntar Claude Code al plugin
 
 ```bash
-claude --plugin harness-v3-ai-generated/adapters/claude-code/
+claude --plugin data-eng-harness-v1/adapters/claude-code/
 ```
 
 O añadir la ruta `adapters/claude-code/` como plugin en la configuración del proyecto de Claude Code (`settings.json` o equivalente).
@@ -75,7 +75,7 @@ Una vez instalado, el comando `inicia el planificador para realizar el proyecto 
 
 El arnés se distribuye como repositorio git. Cualquier miembro del equipo que clone el repo y apunte Claude Code al plugin puede ejecutar el ciclo completo. No hay dependencias de runtime adicionales más allá de Claude Code.
 
-Para compartir en un nuevo proyecto interno: incluir el repositorio como submódulo git o copiar el directorio `harness-v3-ai-generated/` al repo del proyecto.
+Para compartir en un nuevo proyecto interno: incluir el repositorio como submódulo git o copiar el directorio `data-eng-harness-v1/` al repo del proyecto.
 
 ---
 
@@ -135,7 +135,7 @@ El ciclo de 4 agentes se ejecuta dentro de la sesión:
 ### 1. Copiar la plantilla
 
 ```bash
-cp -r harness-v3-ai-generated/project-template/ {ruta_del_nuevo_proyecto}/
+cp -r data-eng-harness-v1/project-template/ {ruta_del_nuevo_proyecto}/
 ```
 
 ### 2. Rellenar CLAUDE.md

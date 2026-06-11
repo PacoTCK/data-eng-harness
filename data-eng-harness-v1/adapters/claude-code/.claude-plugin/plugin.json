@@ -1,5 +1,5 @@
 {
-  "name": "data-eng-harness-v3",
+  "name": "data-eng-harness-v1",
   "displayName": "Data Engineering Agent Harness v3",
   "version": "3.0.0",
   "description": "Arnés portable para agentes de coding orientado a tareas de ingeniería de datos. Implementa un ciclo de 4 agentes especializados (planificador, navegador, implementador, evaluador) con human-in-the-loop. Core model-agnostic; esta capa es específica de Claude Code.",

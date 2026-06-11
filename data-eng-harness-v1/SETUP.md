@@ -15,7 +15,7 @@ git clone {url_del_repo_interno}
 cd data-eng-harness
 ```
 
-Todo lo necesario vive bajo `harness-v3-ai-generated/`. No hay dependencias
+Todo lo necesario vive bajo `data-eng-harness-v1/`. No hay dependencias
 adicionales que instalar: el único runtime necesario es Claude Code.
 
 ---
@@ -25,7 +25,7 @@ adicionales que instalar: el único runtime necesario es Claude Code.
 ### 2.1 Apuntar Claude Code al plugin
 
 ```bash
-claude --plugin harness-v3-ai-generated/adapters/claude-code/
+claude --plugin data-eng-harness-v1/adapters/claude-code/
 ```
 
 O añadir la ruta `adapters/claude-code/` como plugin en la configuración del
@@ -36,7 +36,7 @@ la skill `eng-harness`.
 ### 2.2 Copiar la plantilla de proyecto
 
 ```bash
-cp -r harness-v3-ai-generated/project-template/ {ruta_del_nuevo_proyecto}/
+cp -r data-eng-harness-v1/project-template/ {ruta_del_nuevo_proyecto}/
 ```
 
 ### 2.3 Inicializar la capa de estado
@@ -69,7 +69,7 @@ el planificador pueda identificar como activas o pendientes.
 
 | Comando | Qué hace |
 |---|---|
-| `claude --plugin harness-v3-ai-generated/adapters/claude-code/` | Registra el plugin del arnés (4 agentes + skill `eng-harness`) en Claude Code. |
+| `claude --plugin data-eng-harness-v1/adapters/claude-code/` | Registra el plugin del arnés (4 agentes + skill `eng-harness`) en Claude Code. |
 | `/eng-harness` (o escribir "usar el arnes de ingenieria") | Dispara la skill del ciclo: ejecuta el protocolo de sesión (D9) — re-entrada, ciclo de 4 agentes, cierre — para **una** tarea. |
 | `/clear` | Limpia el contexto de la sesión tras el checkpoint humano de cierre, antes de arrancar la siguiente sesión. |
 

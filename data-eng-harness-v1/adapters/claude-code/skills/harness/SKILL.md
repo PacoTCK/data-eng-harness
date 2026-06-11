@@ -1,7 +1,7 @@
 ---
 name: eng-harness
 description: |
-  Skill del workflow del arnés harness-v3 para ingeniería de datos.
+  Skill del workflow del arnés data-eng-harness-v1 para ingeniería de datos.
   Ejecuta el protocolo de sesión único (D9): re-entrada → ciclo de 4 agentes
   (planificación → implementación → evaluación, arrancando SIEMPRE por el
   planificador) → cierre de sesión. Procesa UNA tarea por sesión.

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "harness-v3/scorecard",
+  "$id": "data-eng-harness-v1/scorecard",
   "title": "Eval Scorecard",
   "description": "Estructura de un scorecard de evaluación del arnés. Reutilizable para registrar el resultado de cualquier eval del baseline.",
   "type": "object",
