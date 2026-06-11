@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "harness-v3/scorecard",
+  "title": "Eval Scorecard",
+  "description": "Estructura de un scorecard de evaluación del arnés. Reutilizable para registrar el resultado de cualquier eval del baseline.",
+  "type": "object",
+  "required": ["eval_id", "variant", "run_date", "axes", "overall", "verdict"],
+  "properties": {
+    "eval_id": {
+      "type": "string",
+      "description": "Identificador del eval ejecutado (p.ej. 'eval-01').",
+      "examples": ["eval-01", "eval-02", "eval-03"]
+    },
+    "variant": {
+      "type": "string",
+      "description": "Identificador de la variante de config/prompts del arnés que se evalúa. Permite comparar A vs B.",
+      "examples": ["baseline", "v1.1-prompt-refinement", "v2-contract-schema-update"]
+    },
+    "run_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de ejecución del eval (YYYY-MM-DD).",
+      "examples": ["2026-06-09"]
+    },
+    "run_capture_ref": {
+      "type": ["string", "null"],
+      "description": "Ruta al fichero JSON del run capturado. null si el eval es conceptual (R4).",
+      "examples": ["baseline/runs/eval-01-run-20260609.json", null]
+    },
+    "conceptual": {
+      "type": "boolean",
+      "description": "true si este scorecard es conceptual (sin ejecución real, R4). Marcar siempre explícitamente.",
+      "default": false
+    },
+    "axes": {
+      "type": "object",
+      "description": "Resultados por eje. Los cuatro ejes son obligatorios; sus pesos deben sumar 1.0.",
+      "required": ["outcome", "process", "style", "efficiency"],
+      "properties": {
+        "outcome": {
+          "$ref": "#/$defs/axis_result"
+        },
+        "process": {
+          "$ref": "#/$defs/axis_result"
+        },
+        "style": {
+          "$ref": "#/$defs/axis_result"
+        },
+        "efficiency": {
+          "$ref": "#/$defs/axis_result"
+        }
+      },
+      "additionalProperties": false
+    },
+    "overall": {
+      "type": "object",
+      "description": "Score global ponderado y umbral de aprobación.",
+      "required": ["score", "pass_threshold"],
+      "properties": {
+        "score": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Resultado de weighted_average(outcome, process, style, efficiency). null si conceptual."
+        },
+        "pass_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Umbral mínimo para considerar el eval superado. Por defecto 0.70.",
+          "default": 0.70
+        }
+      },
+      "additionalProperties": false
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "CONCEPTUAL"],
+      "description": "Veredicto del eval. CONCEPTUAL cuando no hay run real (R4)."
+    },
+    "failed_checks": {
+      "type": "array",
+      "description": "Lista de checks que fallaron o quedaron por debajo del umbral rubric. Vacío si PASS.",
+      "items": {
+        "$ref": "#/$defs/failed_check"
+      },
+      "default": []
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "description": "Observaciones libres sobre este run. Especialmente: hallazgos que podrían convertirse en nuevos evals (ver tuning-loop.md)."
+    }
+  },
+  "additionalProperties": false,
+
+  "$defs": {
+    "axis_result": {
+      "type": "object",
+      "description": "Resultado de un eje de evaluación.",
+      "required": ["weight", "raw_score", "weighted_score"],
+      "properties": {
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Peso de este eje en el score global (debe coincidir con el declarado en el eval YAML)."
+        },
+        "raw_score": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Score normalizado del eje antes de aplicar el peso (0.0-1.0). null si conceptual o si el eje no aplica (n/a)."
+        },
+        "weighted_score": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "raw_score * weight. null si raw_score es null."
+        },
+        "checks_run": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Número de checks ejecutados para este eje."
+        },
+        "checks_passed": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Número de checks superados. null si conceptual."
+        },
+        "method": {
+          "type": "string",
+          "description": "Método de cálculo del raw_score (p.ej. 'fracción de checks deterministas superados', 'media rubric / 5')."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "failed_check": {
+      "type": "object",
+      "description": "Un check que falló o no alcanzó el umbral rubric.",
+      "required": ["check_id", "type", "finding"],
+      "properties": {
+        "check_id": {
+          "type": "string",
+          "description": "Identificador del check fallido (p.ej. 'det-01', 'rub-02').",
+          "examples": ["det-01", "rub-02"]
+        },
+        "type": {
+          "type": "string",
+          "enum": ["deterministic", "rubric_based"],
+          "description": "Tipo de check."
+        },
+        "expected": {
+          "type": ["string", "null"],
+          "description": "Valor o resultado esperado (para checks deterministas)."
+        },
+        "actual": {
+          "type": ["string", "null"],
+          "description": "Valor o resultado obtenido. null si conceptual."
+        },
+        "rubric_score": {
+          "type": ["number", "null"],
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Score obtenido (solo para rubric_based). null si determinista."
+        },
+        "rubric_threshold": {
+          "type": ["number", "null"],
+          "minimum": 1,
+          "maximum": 5,
+          "description": "Umbral mínimo del check rubric. null si determinista."
+        },
+        "finding": {
+          "type": "string",
+          "description": "Descripción accionable del fallo: qué ocurrió y qué habría que cambiar en el arnés para evitarlo."
+        },
+        "tuning_action": {
+          "type": ["string", "null"],
+          "enum": ["add_check_to_eval", "add_sensor_to_core", "escalate_to_human", null],
+          "description": "Acción de tuning recomendada según tuning-loop.md. null si no se ha determinado aún."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "examples": [
+    {
+      "eval_id": "eval-01",
+      "variant": "baseline",
+      "run_date": "2026-06-09",
+      "run_capture_ref": null,
+      "conceptual": true,
+      "axes": {
+        "outcome": {
+          "weight": 0.40,
+          "raw_score": null,
+          "weighted_score": null,
+          "checks_run": 2,
+          "checks_passed": null,
+          "method": "fracción de checks deterministas superados"
+        },
+        "process": {
+          "weight": 0.30,
+          "raw_score": null,
+          "weighted_score": null,
+          "checks_run": 1,
+          "checks_passed": null,
+          "method": "media de scores rubric / 5"
+        },
+        "style": {
+          "weight": 0.20,
+          "raw_score": null,
+          "weighted_score": null,
+          "checks_run": 0,
+          "checks_passed": null,
+          "method": "n/a"
+        },
+        "efficiency": {
+          "weight": 0.10,
+          "raw_score": null,
+          "weighted_score": null,
+          "checks_run": 0,
+          "checks_passed": null,
+          "method": "tokens consumidos vs umbral"
+        }
+      },
+      "overall": {
+        "score": null,
+        "pass_threshold": 0.70
+      },
+      "verdict": "CONCEPTUAL",
+      "failed_checks": [],
+      "notes": "Scorecard de ejemplo conceptual (R4). Rellenar con valores reales en ejecución."
+    }
+  ]
+}

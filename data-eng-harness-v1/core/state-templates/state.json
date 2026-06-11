@@ -1,0 +1,28 @@
+{
+  "_template_instructions": {
+    "description": "Plantilla de la capa de estado del arnés (D10, hard_spec.md §5). Copia este fichero a state.json en la raíz del proyecto que use el arnés y rellena el índice de bloques/tareas.",
+    "unica_mutacion_permitida": "El campo 'status' de cada entrada de bloque y de cada entrada de tarea. NINGÚN otro campo de este fichero se edita en el día a día.",
+    "que_NO_va_aqui": "Las definiciones de bloque, sus objetivos, su contenido y sus acceptance_criteria viven en hard_spec.md. Este fichero solo referencia IDs (B0, B2-03, ...) y su status. Ninguna frase debe quedar duplicada entre este fichero y hard_spec.md.",
+    "quien_edita": "El planificador, en cada iteración del ciclo (al crear un contrato → status: pending; al invocarse el implementador vía orquestador → status: in_progress; al recibir veredicto del evaluador → status: complete o failed).",
+    "status_values": "pending | in_progress | complete | failed",
+    "regenerable": "Este fichero es una proyección derivada de hard_spec.md + el estado real del repo (git log). Si se corrompe o se pierde, es regenerable inspeccionando el historial de git y el contenido de tasks/."
+  },
+
+  "workflow_id": "{nombre del workflow, ej: harness-v3-ai-generated}",
+  "spec_reference": "hard_spec.md",
+  "last_updated": "YYYY-MM-DD",
+
+  "blocks": [
+    {
+      "block_id": "{B0}",
+      "status": "pending",
+      "tasks": [
+        {
+          "task_id": "{B0-01}",
+          "status": "pending",
+          "contract": "tasks/{B0}-{slug}.json"
+        }
+      ]
+    }
+  ]
+}

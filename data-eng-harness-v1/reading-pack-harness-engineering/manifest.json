@@ -1,0 +1,26 @@
+{
+  "package_name": "reading-pack-harness-engineering-v2",
+  "created_files": [
+    "README.md",
+    "AGENT_BOOTSTRAP_PROMPT.md",
+    "manifest.json",
+    "articles/01-harness-engineering-for-coding-agent-users.md",
+    "articles/02-effective-harnesses-for-long-running-agents.md",
+    "articles/03-harness-design-for-long-running-application-development.md",
+    "articles/04-maintainability-sensors-for-coding-agents.md",
+    "articles/05-writing-effective-tools-for-agents.md",
+    "articles/06-testing-agent-skills-systematically-with-evals.md",
+    "articles/07-swe-agent-agent-computer-interfaces.md",
+    "articles/08-decoding-the-configuration-of-ai-coding-agents.md",
+    "user-supplied-articles/250714_huntley_ralph_wiggum_technique.md",
+    "user-supplied-articles/260211_openai_harness_engineering_codex.md",
+    "user-supplied-articles/260324_anthropic_harness_design.md"
+  ],
+  "article_count": 8,
+  "user_supplied_expected_files": [
+    "250714_huntley_ralph_wiggum_technique.md",
+    "260211_openai_harness_engineering_codex.md",
+    "260324_anthropic_harness_design.md"
+  ],
+  "note": "Incluye fichas Markdown de artículos base y placeholders para tres artículos adicionales que el usuario insertará manualmente."
+}

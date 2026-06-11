@@ -1,0 +1,129 @@
+# eval-02-pipeline-generation.yaml
+# Eval: el agente genera un modelo de transformación dbt (staging → mart) a partir de una especificación.
+#
+# Área de riesgo: ¿produce el agente código correcto, idiomático y bien documentado?
+# Este eval separa la calidad del artefacto (outcome) de las convenciones de estilo (style)
+# y de la eficiencia del proceso de generación (efficiency).
+
+id: eval-02
+title: "Generación de modelo de transformación (staging → mart)"
+status: conceptual  # ⟨ejemplo conceptual — R4⟩: sin ejecución real
+
+description: |
+  El agente recibe la especificación de un modelo mart de revenue por cliente y debe generar:
+  1. `models/staging/stg_orders.sql` — modelo staging que limpia y tipifica `raw/orders.csv`
+  2. `models/marts/revenue_by_customer.sql` — modelo mart que agrega revenue por customer_id
+  3. `models/staging/stg_orders.yml` — schema.yml con descriptions y tests para el modelo staging
+  4. `models/marts/revenue_by_customer.yml` — schema.yml con descriptions y tests para el mart
+
+  El eval comprueba que el código es correcto, sigue las convenciones de naming y estilo, y
+  está suficientemente documentado para que otro ingeniero entienda el modelo sin leer el SQL.
+
+prompt: |
+  Crea los modelos dbt necesarios para calcular el revenue total por cliente.
+
+  Fuentes disponibles (ya validadas por FF-01):
+  - `raw/orders`: order_id, order_date (DATE), customer_id (INTEGER), amount (DECIMAL)
+  - `raw/customers`: customer_id (INTEGER), customer_name (STRING), country (STRING), created_at (DATE)
+
+  Requisitos del modelo:
+  - Capa staging: un modelo por tabla fuente, con naming `stg_{source}_{table}`
+  - Capa mart: `revenue_by_customer` con columnas:
+      customer_id, customer_name, country, total_revenue, order_count, first_order_date, last_order_date
+  - Todos los modelos deben tener descriptions en el schema.yml
+  - Todos los modelos deben tener al menos: unique + not_null en primary keys, not_null en métricas
+
+  Stack: dbt Core con adaptador PostgreSQL (o equivalente). SQL ANSI salvo donde se indique.
+
+run_capture:
+  format: "JSON: array de turnos [{role, content, tool_calls}]"
+  # ⟨ejemplo conceptual — R4⟩
+  # Estructura esperada del run real:
+  #   turno 1: agente crea stg_orders.sql con SELECT explícito + CAST para order_date
+  #   turno 2: agente crea stg_customers.sql
+  #   turno 3: agente crea revenue_by_customer.sql con JOIN + GROUP BY
+  #   turno 4: agente crea los schema.yml para ambas capas
+  #   turno 5: agente ejecuta dbt compile + dbt test y reporta resultado
+  description_for_real_run: "Capturar con `claude --capture-run` o equivalente del runtime."
+
+checks:
+  deterministic:
+    - id: det-01
+      description: "Los modelos generados compilan sin errores (dbt compile exit code 0)"
+      verification: "dbt compile en el directorio del proyecto devuelve exit code 0"
+      expected: pass
+
+    - id: det-02
+      description: "Los tests declarados en schema.yml pasan (dbt test exit code 0)"
+      verification: "dbt test devuelve exit code 0 para todos los modelos generados"
+      expected: pass
+
+    - id: det-03
+      description: "Ningún modelo contiene SELECT * (convención de estilo)"
+      verification: "grep -rn 'SELECT \\*' en todos los .sql generados devuelve 0 matches"
+      expected: pass
+
+    - id: det-04
+      description: "Cada modelo tiene un schema.yml con al menos 1 description y 2 tests"
+      verification: "Cada .yml generado tiene campo description no vacío y al menos 2 entradas bajo tests:"
+      expected: pass
+
+    - id: det-05
+      description: "El modelo mart tiene las 7 columnas especificadas"
+      verification: "revenue_by_customer.sql produce columnas: customer_id, customer_name, country, total_revenue, order_count, first_order_date, last_order_date"
+      expected: pass
+
+  rubric_based:
+    - id: rub-01
+      description: "Calidad del modelo dimensional: el mart sigue las convenciones de modelado analítico"
+      rubric: |
+        5 — El mart: (a) separa claramente la lógica de staging de la de agregación,
+            (b) usa CTEs nombradas (no subconsultas anidadas), (c) el naming de columnas
+            es snake_case y autoexplicativo, (d) los tipos son apropiados (DATE no STRING,
+            DECIMAL no FLOAT para métricas monetarias)
+        3 — El mart produce el resultado correcto pero con al menos 1 de los criterios
+            anteriores incumplido (p.ej. subconsultas en lugar de CTEs, o FLOAT para amount)
+        1 — El mart produce el resultado incorrecto o el SQL no es válido
+      threshold: 3
+
+    - id: rub-02
+      description: "Documentación del modelo: los schema.yml permiten entender el modelo sin leer el SQL"
+      rubric: |
+        5 — Las descriptions de modelo y columnas son específicas del dominio de negocio
+            (p.ej. "revenue total en EUR generado por el cliente desde su primera orden"),
+            no genéricas (p.ej. "total revenue")
+        3 — Las descriptions son presentes y coherentes pero genéricas
+        1 — Las descriptions están vacías o son placeholders
+      threshold: 3
+
+score:
+  axes:
+    outcome:
+      weight: 0.40
+      checks: [det-01, det-02, det-04, det-05]
+      method: "fracción de checks deterministas superados (superados / total)"
+    process:
+      weight: 0.30
+      checks: [rub-01]
+      method: "media de scores rubric / 5"
+    style:
+      weight: 0.20
+      checks: [det-03, rub-02]
+      method: "0.5 * (det-03 como 0/1) + 0.5 * (rub-02_score / 5)"
+    efficiency:
+      weight: 0.10
+      metric: "número de turnos hasta producir todos los artefactos"
+      threshold: "⟨pendiente de confirmar — R1/R4⟩"
+      method: "1.0 si <= 5 turnos; 0.5 si 6-8 turnos; 0.0 si > 8 turnos"
+
+  formula: "weighted_average(outcome, process, style, efficiency)"
+  pass_threshold: 0.70
+
+tuning_notes: |
+  Fallos esperados en primeras iteraciones:
+  - SELECT * en staging: añadir det-03 como check explícito (ya incluido) y considerar sensor
+    SQL-lint en CI si es recurrente.
+  - Tipos incorrectos (FLOAT para amount): añadir check determinista det-06 en próxima versión
+    si se observa en run real.
+  - Documentación genérica (rub-02 = 1-2): ajustar el prompt del implementador para incluir
+    ejemplos de descriptions específicas del dominio.

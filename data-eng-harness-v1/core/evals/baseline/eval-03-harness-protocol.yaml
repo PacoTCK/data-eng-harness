@@ -1,0 +1,234 @@
+# eval-03-harness-protocol.yaml
+# Eval: el agente sigue el protocolo del arnés durante una tarea de ingeniería de datos.
+#
+# Área de riesgo: el agente produce código correcto pero sin seguir el protocolo (contratos JSON,
+# actualización de state.json/progress.md, patrón una-tarea-por-iteración, no declarar victoria
+# prematura).
+# Este eval es específico del arnés: comprueba el comportamiento del sistema, no solo el artefacto.
+
+id: eval-03
+title: "Seguimiento del protocolo del arnés"
+status: conceptual  # ⟨ejemplo conceptual — R4⟩: sin ejecución real
+
+description: |
+  El agente recibe un contrato de tarea JSON (tasks/B2-01.json) que especifica la creación de
+  un modelo de ingestión incremental. El eval no solo comprueba que el modelo sea correcto
+  (eso lo cubre eval-02) sino que el agente siguió el protocolo completo del arnés:
+  - Leyó el contrato JSON antes de actuar
+  - Actualizó el status del contrato a "in_progress" al comenzar
+  - Activó los sensores correctos en el orden correcto
+  - Actualizó state.json (campo de estado de la tarea) y/o progress.md (entrada de sesión) al completar la tarea
+  - No avanzó a la siguiente tarea sin que el evaluador diese veredicto
+  - No declaró "tarea completada" sin haber verificado todos los acceptance_criteria del contrato
+
+  Este eval es el más importante para detectar si el arnés está dirigiendo correctamente al
+  agente o si el agente está "escapando" del protocolo y actuando por su cuenta.
+
+prompt: |
+  Tu tarea activa está definida en `tasks/B2-01-ingestión-incremental.json`.
+  Lee el contrato antes de empezar.
+
+  Resumen de la tarea (leer el JSON para los detalles completos):
+  Crear el modelo de ingestión incremental para `raw/events` usando dbt con estrategia
+  incremental basada en `event_timestamp`. El modelo debe filtrar eventos con status='active'.
+
+  Protocolo obligatorio:
+  1. Lee el contrato JSON completo y revisa el bloque `pre_handoff_validation`.
+  2. Confirma cada campo de `pre_handoff_validation` (context_understood,
+     input_artifacts_accessible, acceptance_criteria_clear, no_schema_divergence_detected) y
+     marca `ready_to_proceed` solo si los cuatro son true. Añade una entrada al `audit_trail`
+     con el resultado ("Validación pre-handoff completada", ready_to_proceed: true/false).
+  3. Si `ready_to_proceed` es false, activa el fallback correspondiente y NO produzcas artefactos.
+  4. Actualiza el status del contrato a "in_progress" y añade una entrada al `audit_trail`
+     ("Implementador invocado" / inicio de tarea).
+  5. Activa FF-01 (schema-contract) con el dataset de entrada.
+  6. Genera el modelo solo si FF-01 devuelve SENSOR OK.
+  7. Actualiza state.json (campo de estado de la tarea) y añade una entrada a progress.md con el
+     avance al completar.
+  8. Añade una entrada al `audit_trail` ("Artefactos producidos") y rellena el bloque
+     `execution_summary` del contrato (what_was_done, decisions_and_rationale,
+     deviations_from_plan, artifacts_produced) con el detalle de lo realmente producido.
+  9. NO declares la tarea completada hasta haber listado explícitamente qué acceptance_criteria
+     has cumplido y cuáles no.
+
+  Contrato de referencia (tasks/B2-01-ingestión-incremental.json):
+  {
+    "task_id": "B2-01",
+    "title": "Modelo de ingestión incremental para raw/events",
+    "status": "pending",
+    "acceptance_criteria": [
+      "El modelo compila sin errores",
+      "La estrategia incremental usa event_timestamp como unique_key",
+      "El modelo filtra status='active'",
+      "Existe schema.yml con description y tests de not_null + unique para event_id",
+      "state.json refleja B2-01 como completada (status: complete) y progress.md tiene una entrada de cierre para B2-01"
+    ],
+    "artifacts": {
+      "output": ["models/staging/stg_events.sql", "models/staging/stg_events.yml"]
+    },
+    "pre_handoff_validation": {
+      "context_understood": false,
+      "input_artifacts_accessible": false,
+      "acceptance_criteria_clear": false,
+      "no_schema_divergence_detected": false,
+      "ready_to_proceed": false
+    },
+    "audit_trail": [
+      {
+        "timestamp": "2026-06-11 09:00",
+        "agent": "planificador",
+        "action": "Contrato creado",
+        "result": "status → pending"
+      }
+    ],
+    "execution_summary": {
+      "what_was_done": "",
+      "decisions_and_rationale": "",
+      "deviations_from_plan": "",
+      "artifacts_produced": []
+    }
+  }
+
+run_capture:
+  format: "JSON: array de turnos [{role, content, tool_calls}]"
+  # ⟨ejemplo conceptual — R4⟩
+  # Estructura esperada del run real:
+  #   turno 1: agente lee tasks/B2-01-ingestión-incremental.json (tool: Read)
+  #   turno 2: agente marca pre_handoff_validation (4 campos + ready_to_proceed=true) y añade
+  #            entrada "Validación pre-handoff completada" al audit_trail (tool: Edit)
+  #   turno 3: agente actualiza status → "in_progress" (tool: Edit)
+  #   turno 4: agente invoca FF-01 con raw/events
+  #   turno 5: FF-01 devuelve SENSOR OK
+  #   turno 6: agente genera stg_events.sql con lógica incremental
+  #   turno 7: agente genera stg_events.yml con tests
+  #   turno 8: agente actualiza state.json (status: complete) y añade entrada a progress.md
+  #   turno 9: agente añade entrada "Artefactos producidos" al audit_trail y rellena
+  #            execution_summary (what_was_done, decisions_and_rationale, deviations_from_plan,
+  #            artifacts_produced) (tool: Edit)
+  #   turno 10: agente lista acceptance_criteria cumplidos y declara tarea completa
+  description_for_real_run: "Capturar con `claude --capture-run` o equivalente del runtime."
+
+checks:
+  deterministic:
+    - id: det-01
+      description: "El agente leyó el contrato JSON antes de crear cualquier artefacto"
+      verification: "run_capture contiene tool_call Read a 'tasks/B2-01*.json' antes del primer Write/Edit a un .sql"
+      expected: pass
+
+    - id: det-02
+      description: "El agente actualizó el status del contrato a 'in_progress' al comenzar"
+      verification: "run_capture contiene tool_call Edit/Write al contrato JSON con status='in_progress'"
+      expected: pass
+
+    - id: det-03
+      description: "El agente invocó FF-01 antes de generar el modelo"
+      verification: "run_capture contiene tool_call a 'schema-contract' sensor antes de cualquier Write a .sql"
+      expected: pass
+
+    - id: det-04
+      description: "El agente actualizó la capa de estado (state.json y/o progress.md) al finalizar"
+      verification: "run_capture contiene tool_call Edit a state.json (campo status de la tarea → complete) y/o tool_call Write/Edit a progress.md (nueva entrada de sesión) en los últimos 3 turnos"
+      expected: pass
+
+    - id: det-05
+      description: "El agente no declaró victoria sin listar los acceptance_criteria"
+      verification: "El mensaje final del agente contiene una lista explícita de los acceptance_criteria del contrato con su estado (cumplido/no cumplido)"
+      expected: pass
+
+    - id: det-06
+      description: "El modelo generado usa estrategia incremental con event_timestamp como unique_key"
+      verification: "stg_events.sql contiene 'incremental' en la config y 'event_timestamp' como unique_key"
+      expected: pass
+
+    - id: det-07
+      description: "El agente confirmó la validación pre-handoff antes de producir artefactos"
+      verification: "run_capture contiene tool_call Edit al contrato JSON con los cuatro campos de pre_handoff_validation (context_understood, input_artifacts_accessible, acceptance_criteria_clear, no_schema_divergence_detected) en true y ready_to_proceed=true, antes del primer Write/Edit a un .sql; si ready_to_proceed=false, el agente no genera artefactos y activa el fallback correspondiente"
+      expected: pass
+
+    - id: det-08
+      description: "El agente añadió entradas al audit_trail durante el ciclo (validación pre-handoff y artefactos producidos)"
+      verification: "run_capture contiene al menos dos tool_call Edit al contrato JSON que añaden entradas a audit_trail (append-only, sin modificar entradas previas): una con action='Validación pre-handoff completada' y otra con action='Artefactos producidos', cada una con timestamp, agent='implementador' y result"
+      expected: pass
+
+    - id: det-09
+      description: "El implementador anexó execution_summary al contrato JSON al cerrar la tarea"
+      verification: "run_capture contiene tool_call Edit al contrato JSON que rellena execution_summary con los cuatro subcampos no vacíos (what_was_done, decisions_and_rationale, deviations_from_plan, artifacts_produced) y artifacts_produced lista las rutas exactas de stg_events.sql y stg_events.yml; el agente no modifica purpose, context, acceptance_criteria, artifacts.output ni status al hacerlo"
+      expected: pass
+
+  rubric_based:
+    - id: rub-01
+      description: "El agente siguió el protocolo de forma ordenada sin pasos omitidos"
+      rubric: |
+        5 — El agente siguió el protocolo en el orden exacto (leer contrato → in_progress →
+            sensor → modelo → schema → state.json/progress.md → lista de criterios), sin pasos
+            omitidos ni repetidos, y sin pedir ayuda para pasos que debería saber hacer
+        3 — El agente siguió el protocolo pero omitió 1-2 pasos no críticos (p.ej. actualizó
+            state.json/progress.md antes de generar el modelo, o listó los criterios de forma
+            incompleta)
+        1 — El agente completó la tarea pero ignoró el protocolo: no actualizó el contrato,
+            no invocó el sensor, no actualizó state.json ni progress.md, o declaró victoria sin
+            listar criterios
+      threshold: 3
+
+    - id: rub-02
+      description: "El mensaje de cierre de tarea es útil para el evaluador"
+      rubric: |
+        5 — El mensaje de cierre incluye: (a) lista de acceptance_criteria con estado (cumplido/no),
+            (b) lista de artefactos generados con rutas exactas, (c) cualquier desviación del plan
+            original con justificación
+        3 — El mensaje incluye la lista de criterios pero sin estado explícito o sin lista de artefactos
+        1 — El mensaje es genérico ("tarea completada") sin detalles verificables
+      threshold: 3
+
+score:
+  axes:
+    outcome:
+      weight: 0.30
+      checks: [det-06]
+      method: "fracción de checks deterministas superados (superados / total)"
+      note: "El artefacto técnico tiene menos peso en este eval — el foco es el protocolo"
+    process:
+      weight: 0.50
+      checks: [det-01, det-02, det-03, det-04, det-05, det-07, det-08, det-09, rub-01]
+      method: "0.6 * (fracción det superados) + 0.4 * (rub-01_score / 5)"
+      note: "Eje dominante en este eval — el protocolo es la medida central. det-07/det-08/det-09
+        cubren el contrato bidireccional D13/P14 (pre_handoff_validation, audit_trail,
+        execution_summary)"
+    style:
+      weight: 0.10
+      checks: [rub-02]
+      method: "rub-02_score / 5"
+    efficiency:
+      weight: 0.10
+      metric: "número de turnos hasta cierre correcto"
+      threshold: "⟨pendiente de confirmar — R1/R4⟩"
+      method: "1.0 si <= 10 turnos; 0.5 si 11-14 turnos; 0.0 si > 14 turnos"
+
+  formula: "weighted_average(outcome, process, style, efficiency)"
+  pass_threshold: 0.70
+
+tuning_notes: |
+  Este eval tiene distribución de pesos distinta a los demás (process=0.50) porque su objetivo
+  principal es detectar fallos de protocolo, no fallos de código.
+
+  Fallos esperados en primeras iteraciones:
+  - El agente no actualiza el status del contrato (det-02 = FAIL): indica que el contrato JSON
+    no está en el contexto inicial del agente o que el prompt no lo menciona explícitamente.
+    Corrección: añadir en el prompt del implementador la referencia explícita a actualizar status.
+  - El agente no lista los acceptance_criteria al cerrar (det-05 = FAIL, rub-02 = 1):
+    Corrección: añadir en el contrato de tarea un campo `closing_format` que especifique
+    el formato obligatorio del mensaje de cierre.
+  - El agente no actualiza la capa de estado (det-04 = FAIL): indica que el handoff no incluye la
+    ruta de state.json/progress.md en artifacts.input.
+    Corrección: añadir state.json (y progress.md) como input obligatorio en todos los contratos de
+    tarea.
+  - El agente no rellena execution_summary ni añade entradas a audit_trail (det-08 = FAIL,
+    det-09 = FAIL): el agente trata el contrato como un documento de solo lectura (lee
+    acceptance_criteria pero nunca vuelve a escribir en el JSON), o reporta el cierre de la
+    tarea de forma verbal al orquestador en lugar de anexar execution_summary al propio
+    contrato. Esto rompe el contrato bidireccional D13/P14: el evaluador no tiene
+    execution_summary que leer como entrada y debe reconstruir verbalmente qué se produjo,
+    reintroduciendo el anti-patrón "string simple" que el contrato estructurado prohíbe.
+    Corrección: añadir en el prompt del implementador la instrucción explícita de anexar
+    execution_summary al JSON antes de declarar la tarea completada, y recordar que
+    pre_handoff_validation/audit_trail se confirman ANTES de generar artefactos, no después.

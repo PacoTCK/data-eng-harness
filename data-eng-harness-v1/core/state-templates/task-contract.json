@@ -1,0 +1,105 @@
+{
+  "_template_instructions": {
+    "description": "Plantilla de contrato de tarea (Structured Contract, P14). Copia este fichero a tasks/{BLOQUE_ID}-{slug}.json y rellena todos los campos marcados con {MAYUSCULAS}. Los campos con comentario '// append-only' no se modifican una vez escritos; solo se añaden entradas al final. Los campos booleanos de pre_handoff_validation arrancan en false y el receptor los marca true antes de actuar.",
+    "naming_convention": "tasks/{BLOQUE_ID}-{slug}.json  —  ejemplo: tasks/B3-estado-handoff.json",
+    "who_fills_what": {
+      "_bidireccional": "El contrato es BIDIRECCIONAL (D13): no se cierra el ciclo planificador -> implementador -> evaluador con un handoff verbal de artefactos. El implementador anexa execution_summary al propio JSON; el evaluador lo lee como entrada junto a acceptance_criteria. El reparto exacto es:",
+      "planificador": "Rellena TODO el contrato inicial al crearlo: task_id, workflow_id, parent_block, created, title, purpose, context, acceptance_criteria, artifacts, fallback. Inicializa status=pending, audit_trail=[], pre_handoff_validation con todos los campos en false, y execution_summary vacío/con placeholders.",
+      "implementador": "Al recibir el contrato, confirma pre_handoff_validation marcando cada campo true. Solo procede si ready_to_proceed=true. Añade entrada al audit_trail al comenzar y al terminar. Al terminar, escribe SOLO el bloque execution_summary (qué hizo, decisiones y su porqué, desviaciones respecto al plan, artefactos realmente producidos). No modifica purpose, context, acceptance_criteria, artifacts.output ni status.",
+      "evaluador": "Lee acceptance_criteria + execution_summary como entrada (en vez de recibir una lista verbal de artefactos del orquestador). Añade entrada al audit_trail con el veredicto. No modifica ningún otro campo, incluido execution_summary.",
+      "orquestador": "Actualiza status al invocar al implementador (in_progress). Tras recibir el veredicto del evaluador, el planificador (o el orquestador, según el reparto vigente) escribe SOLO el campo status (complete o failed). No transmite verbalmente la lista de artefactos producidos: esa información vive en execution_summary."
+    }
+  },
+
+  "task_id": "{BLOQUE_ID}-{numero_secuencial}",
+  "workflow_id": "{nombre del workflow, ej: harness-v3-ai-generated}",
+  "parent_block": "{BLOQUE_ID}",
+  "created": "YYYY-MM-DD",
+  "handoff_type": "planner_to_implementador",
+  "status": "pending",
+
+  "_status_values": "pending | in_progress | complete | failed",
+
+  "title": "{Título corto e imperativo de la tarea — máx. 10 palabras}",
+  "purpose": "{Descripción detallada de qué hay que hacer y por qué — 1 a 3 párrafos. Incluye el objetivo, el contexto de diseño relevante y por qué esta tarea es necesaria en este momento del proyecto.}",
+
+  "context": {
+    "spec_reference": "{hard_spec.md §X.Y — sección exacta que aplica}",
+    "related_blocks": ["{BLOQUE_ID}", "{otro bloque relacionado si aplica}"],
+    "current_state": "{Qué existe ahora en el repo que sea relevante para esta tarea. Qué falta. Qué bloquea o desbloquea.}"
+  },
+
+  "acceptance_criteria": [
+    "{Criterio 1 — específico y verificable por el evaluador sin interpretación adicional}",
+    "{Criterio 2}",
+    "{Criterio N}"
+  ],
+
+  "artifacts": {
+    "input": [
+      "{Fichero o spec que el implementador debe leer antes de empezar — ruta relativa al repo}",
+      "{Otro fichero de entrada}"
+    ],
+    "output": [
+      "{Fichero o artefacto esperado como resultado — ruta relativa al repo}",
+      "{Otro fichero de salida}"
+    ]
+  },
+
+  "pre_handoff_validation": {
+    "_instructions": "El receptor (implementador o evaluador) debe revisar este bloque al recibir el contrato. Marcar cada campo como true solo cuando la condición se cumple. Solo proceder si ready_to_proceed es true. Si algún campo permanece false, activar el fallback correspondiente.",
+    "context_understood": false,
+    "input_artifacts_accessible": false,
+    "acceptance_criteria_clear": false,
+    "no_schema_divergence_detected": false,
+    "ready_to_proceed": false
+  },
+
+  "audit_trail": [
+    {
+      "_instructions_append_only": "Nunca borrar ni modificar entradas existentes. Solo añadir al final. El planificador añade la primera entrada al crear el contrato.",
+      "timestamp": "YYYY-MM-DD HH:MM",
+      "agent": "planificador",
+      "action": "Contrato creado",
+      "result": "status → pending"
+    }
+  ],
+
+  "execution_summary": {
+    "_instructions": "Bloque del contrato bidireccional (D13). El planificador lo deja vacío o con placeholders al crear el contrato. El IMPLEMENTADOR es el único que lo rellena, al terminar su turno, antes de devolver el contrato al orquestador. El evaluador lo LEE como entrada junto a acceptance_criteria; ningún agente lo modifica después de escrito salvo el implementador en un reintento (NO APTO), que puede actualizarlo para reflejar el nuevo estado. Sustituye el handoff verbal de artefactos: el orquestador no transmite oralmente qué se produjo.",
+    "what_was_done": "{Resumen de qué se implementó — qué ficheros se crearon o editaron y qué contienen ahora. Rellenado por el implementador.}",
+    "decisions_and_rationale": "{Decisiones de diseño o redacción tomadas durante la implementación y su porqué — especialmente las no explícitas en el contrato. Rellenado por el implementador.}",
+    "deviations_from_plan": "{Desviaciones respecto a lo previsto en purpose/acceptance_criteria/artifacts.output, y por qué fueron necesarias. 'Ninguna' si no las hubo. Rellenado por el implementador.}",
+    "artifacts_produced": [
+      "{Ruta exacta de cada artefacto realmente producido o modificado. Puede diferir de artifacts.output si surgieron necesidades no previstas en el contrato original — en ese caso, explicar la diferencia en deviations_from_plan.}"
+    ]
+  },
+
+  "fallback": {
+    "on_unclear_requirements": {
+      "condition": "El implementador no puede inferir qué producir a partir del purpose o los acceptance_criteria.",
+      "action": "return_to_planner",
+      "steps": "Añadir entrada al audit_trail con acción 'Fallback: on_unclear_requirements'. El implementador detiene el trabajo y notifica al orquestador, que invoca al planificador con la lista de ambigüedades concretas."
+    },
+    "on_blocked": {
+      "condition": "El implementador no puede avanzar por un obstáculo externo (fichero inaccesible, dependencia rota, requisito contradictorio con otro contrato).",
+      "action": "escalate_to_human",
+      "steps": "Añadir entrada al audit_trail con acción 'Fallback: on_blocked' y descripción del obstáculo. El orquestador notifica al humano y pausa el bucle hasta recibir instrucción."
+    },
+    "on_low_confidence": {
+      "condition": "El implementador completa los artefactos pero detecta que el resultado puede no cumplir los criterios de aceptación por ambigüedad de requisitos o por limitaciones del contexto disponible.",
+      "action": "flag_for_evaluator_and_human_review",
+      "steps": "Producir los artefactos igualmente. Añadir entrada al audit_trail con acción 'Fallback: on_low_confidence' y descripción de la incertidumbre. El evaluador recibe la señal y aplica criterio más estricto. Si el evaluador emite NO APTO, el orquestador escala al humano antes del segundo intento."
+    },
+    "on_timeout": {
+      "condition": "El contrato lleva más de {TIMEOUT_DEFINIDO_POR_PROYECTO} sin avanzar de estado (pendiente → in_progress, o in_progress sin artefactos).",
+      "action": "escalate_to_human_con_estado_actual",
+      "steps": "Añadir entrada al audit_trail con acción 'Fallback: on_timeout'. El orquestador registra el estado actual de los artefactos parciales (si los hay) y notifica al humano con el contexto suficiente para decidir si continuar, reformular o cancelar."
+    },
+    "on_schema_divergence": {
+      "condition": "El implementador detecta que el contrato no es coherente con el esquema de contrato definido en core/state-templates/ o con el resto de contratos en tasks/, o que los acceptance_criteria son contradictorios entre sí.",
+      "action": "return_to_planner_para_reconciliar",
+      "steps": "Añadir entrada al audit_trail con acción 'Fallback: on_schema_divergence' y descripción de la divergencia. El implementador no produce artefactos parciales. El orquestador devuelve el contrato al planificador con la lista de divergencias para su corrección."
+    }
+  }
+}

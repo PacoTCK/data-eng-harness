@@ -1,0 +1,147 @@
+# Perfil de stack del proyecto (D11)
+#
+# Contrato que cada proyecto rellena para instanciar las CATEGORÍAS de sensor que
+# define el core (`../core/sensors/`). El core conoce categorías parametrizables, no
+# herramientas concretas (D11, hard_spec.md §5). Este fichero es la pieza que conecta
+# ambos mundos: cada campo "instancia" una categoría de sensor concreta.
+#
+# Cómo usarlo:
+#   1. Copia este fichero a la raíz del proyecto (o a docs/references/) y rellena los
+#      campos `⟨RELLENAR⟩` con las herramientas reales del cliente/proyecto.
+#   2. El bloque `ejemplo_referencia` de más abajo NO se rellena: es un perfil ya
+#      completo con la implementación de referencia del core (Python + SQL + Spark /
+#      sqlfluff / ruff + mypy / DuckDB). Sirve de plantilla copiable y de fallback
+#      cuando el proyecto no impone otra cosa.
+#   3. Tras rellenar, actualiza las referencias en `CLAUDE.md` (sección "Stack de
+#      datos"), `data-conventions.md` §5 y `docs/references/stack.md` para que apunten
+#      a este fichero ya relleno.
+#   4. Cualquier categoría sin herramienta confirmada se marca como
+#      `⟨pendiente de confirmar⟩` y se registra en `docs/dudas.md`.
+
+# ---------------------------------------------------------------------------
+# Metadatos del perfil
+# ---------------------------------------------------------------------------
+proyecto: "⟨RELLENAR: nombre del proyecto/cliente⟩"
+fecha_confirmacion: "⟨RELLENAR: YYYY-MM-DD⟩"
+confirmado_por: "⟨RELLENAR: rol o persona del lado cliente/equipo⟩"
+
+# ---------------------------------------------------------------------------
+# Lenguajes y motores de procesamiento activos
+# ---------------------------------------------------------------------------
+# Categorías que instancia: base de la que parten FF-03 (tests de pipeline) y FF-04
+# (lint SQL/Python). Python + SQL + Spark/PySpark es el soporte de primera clase del
+# core (D11); otros lenguajes (Scala, Java, PL/SQL, R, DAX) se declaran aquí si el
+# proyecto los usa, aunque el core no ofrezca implementaciones de referencia para ellos.
+lenguajes:
+  activos: ["⟨RELLENAR: p.ej. python, sql, pyspark⟩"]
+  procesamiento: "⟨RELLENAR: p.ej. Spark/PySpark, pandas, motor propio del cliente⟩"
+
+# ---------------------------------------------------------------------------
+# SQL — instancia FF-04 (lint de SQL con dialecto parametrizable)
+# ---------------------------------------------------------------------------
+sql:
+  dialect: "⟨RELLENAR: dialecto sqlfluff — p.ej. sparksql, snowflake, bigquery, hive, tsql, postgres⟩"
+  linter: "⟨RELLENAR: p.ej. sqlfluff⟩"
+  config_file: "⟨RELLENAR: ruta del fichero de config — p.ej. .sqlfluff⟩"
+
+# ---------------------------------------------------------------------------
+# Python — instancia FF-04 (typecheck/lint de Python)
+# ---------------------------------------------------------------------------
+python:
+  lint: "⟨RELLENAR: p.ej. ruff⟩"
+  typecheck: "⟨RELLENAR: p.ej. mypy⟩"
+  config_file: "⟨RELLENAR: ruta del fichero de config — p.ej. pyproject.toml⟩"
+
+# ---------------------------------------------------------------------------
+# Schema / contratos de datos — instancia FF-01 (validación de schema/contratos)
+# ---------------------------------------------------------------------------
+schema_contracts:
+  engine: "⟨RELLENAR: p.ej. pandera, dbt schema tests, great expectations, soda core⟩"
+  formato_contrato: "⟨RELLENAR: p.ej. YAML siguiendo data-conventions.md §3⟩"
+
+# ---------------------------------------------------------------------------
+# Data quality — instancia FF-02 (freshness/nulls/volumetría)
+# ---------------------------------------------------------------------------
+data_quality:
+  engine: "⟨RELLENAR: p.ej. pandera/pydantic, dbt-expectations, great expectations, soda core⟩"
+
+# ---------------------------------------------------------------------------
+# Tests de pipeline — instancia FF-03 (tests de pipeline)
+# ---------------------------------------------------------------------------
+pipeline_tests:
+  framework: "⟨RELLENAR: p.ej. pytest, dbt-unit-testing, pytest-dbt-core, Airflow TaskFlow tests⟩"
+  fixtures: "⟨RELLENAR: p.ej. CSV en tests/fixtures/, DataFrames en memoria⟩"
+
+# ---------------------------------------------------------------------------
+# Warehouse de pruebas — entorno local para validar FF-01/FF-02/FF-03 sin
+# depender de infraestructura del cliente
+# ---------------------------------------------------------------------------
+warehouse_pruebas:
+  engine: "⟨RELLENAR: p.ej. DuckDB⟩"
+
+# ---------------------------------------------------------------------------
+# Plataforma / warehouse de cliente (informativo — el core no depende de esto)
+# ---------------------------------------------------------------------------
+plataforma_cliente:
+  nube: "⟨RELLENAR: p.ej. Azure, AWS, GCP, Databricks, on-prem⟩"
+  warehouse_lake: "⟨RELLENAR: p.ej. Snowflake, BigQuery, Delta Lake, Hive⟩"
+  orquestacion: "⟨RELLENAR: p.ej. Airflow, ADF, Dagster, Prefect⟩"
+  integracion: "⟨RELLENAR: p.ej. Airbyte, Talend, SSIS, ADF⟩"
+  bi: "⟨RELLENAR: p.ej. Power BI, Tableau, Looker⟩"
+
+# =============================================================================
+# PERFIL DE EJEMPLO — implementación de referencia del core (D11)
+# =============================================================================
+# No se rellena: este bloque es un perfil COMPLETO y coherente que demuestra cómo
+# instanciar las categorías de D11 con la implementación de referencia del core
+# (Python + SQL + Spark/PySpark, sqlfluff, ruff + mypy, DuckDB). Cópialo como punto
+# de partida si el proyecto no impone restricciones del cliente.
+ejemplo_referencia:
+  proyecto: "proyecto-ejemplo"
+  fecha_confirmacion: "2026-06-10"
+  confirmado_por: "equipo de plataforma de datos"
+
+  lenguajes:
+    activos: ["python", "sql", "pyspark"]
+    procesamiento: "Spark/PySpark"
+
+  sql:
+    dialect: "sparksql"          # dialecto sqlfluff para Spark SQL
+    linter: "sqlfluff"
+    config_file: ".sqlfluff"
+
+  python:
+    lint: "ruff"
+    typecheck: "mypy"
+    config_file: "pyproject.toml"
+
+  schema_contracts:
+    engine: "pandera"             # valida DataFrames PySpark/Pandas contra el contrato YAML
+    formato_contrato: "YAML siguiendo data-conventions.md §3"
+
+  data_quality:
+    engine: "pandera"             # checks de not-null, unicidad, rangos en tiempo de ejecución
+
+  pipeline_tests:
+    framework: "pytest"
+    fixtures: "CSV/parquet en tests/fixtures/, cargados como DataFrames PySpark"
+
+  warehouse_pruebas:
+    engine: "DuckDB"               # warehouse local para validar FF-01/FF-02/FF-03 sin infra de cliente
+
+  plataforma_cliente:
+    nube: "⟨depende del cliente — no aplica al perfil de ejemplo⟩"
+    warehouse_lake: "⟨depende del cliente — no aplica al perfil de ejemplo⟩"
+    orquestacion: "⟨depende del cliente — no aplica al perfil de ejemplo⟩"
+    integracion: "⟨depende del cliente — no aplica al perfil de ejemplo⟩"
+    bi: "⟨depende del cliente — no aplica al perfil de ejemplo⟩"
+
+# =============================================================================
+# Tabla de referencia: campo del perfil -> categoría de sensor (core/sensors/)
+# =============================================================================
+# sql.dialect, sql.linter             -> FF-04 (lint SQL con dialecto parametrizable)
+# python.lint, python.typecheck       -> FF-04 (typecheck/lint de Python)
+# schema_contracts.engine             -> FF-01 (validación de schema/contratos de datos)
+# data_quality.engine                 -> FF-02 (freshness/nulls/volumetría)
+# pipeline_tests.framework            -> FF-03 (tests de pipeline)
+# warehouse_pruebas.engine            -> entorno de pruebas para FF-01/FF-02/FF-03

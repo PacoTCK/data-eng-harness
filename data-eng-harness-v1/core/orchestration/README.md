@@ -1,0 +1,5 @@
+Definición del ciclo de 4 agentes (one-item-per-loop), protocolo de sesión, protocolo de parada y handoff, model-agnostic.
+
+- `cycle.md` — ciclo de 4 agentes dentro de una sesión (planificador → implementador → evaluador → planificador) y su lugar en la secuencia de sesión completa.
+- `session-protocol.md` — protocolo de sesión (D9): secuencia de re-entrada, regla "una tarea por sesión", secuencia de cierre, contrato del checkpoint y las dos políticas de checkpoint de D12 (`validacion-por-tarea` por defecto, `full-auto`) con los checkpoints duros como invariante. Incluye D13: commit por tarea verificada (tras `APTO`, antes del checkpoint), política de reintentos con `git reset --hard` de rescate, `git log -N` como recuperación además de confirmación, y tag opcional por bloque.
+- `stop-conditions.md` — cuándo el orquestador para, espera o escala, y cómo se refleja en el cierre de sesión, incluida la parada por checkpoint duro (D12) y la parada por `NO APTO` con el límite de 2 reintentos y `git reset --hard` de rescate (D13).

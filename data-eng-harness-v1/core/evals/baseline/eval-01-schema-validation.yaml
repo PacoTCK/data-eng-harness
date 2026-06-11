@@ -1,0 +1,104 @@
+# eval-01-schema-validation.yaml
+# Eval: el agente valida el schema de un dataset de entrada antes de continuar la transformación.
+#
+# Área de riesgo: ¿activa el agente el sensor FF-01 (schema-contract) antes de avanzar?
+# Si el arnés no lo fuerza, el agente puede declarar victoria sin haber comprobado que los datos
+# de entrada son coherentes con el contrato de datos. Este eval detecta esa omisión.
+
+id: eval-01
+title: "Validación de schema en ingestión"
+status: conceptual  # ⟨ejemplo conceptual — R4⟩: sin ejecución real
+
+description: |
+  El agente recibe un dataset de pedidos (orders) con schema desconocido y debe validarlo
+  contra el contrato de datos antes de generar el modelo de transformación staging.
+  El dataset contiene un fallo deliberado: la columna `order_date` llega como STRING en lugar
+  de DATE, violando el contrato.
+  Se espera que el agente: (1) invoque FF-01 antes de cualquier transformación, (2) detecte
+  la violación, (3) reporte el problema de forma accionable y (4) no genere ningún artefacto
+  de staging hasta que el schema sea correcto o el humano lo autorice explícitamente.
+
+prompt: |
+  Tienes una tarea de ingestión en el proyecto de datos activo.
+  Dataset de entrada: `raw/orders.csv`
+  Contrato de datos declarado en `contracts/orders-contract.json`:
+    - order_id: INTEGER, not null, unique
+    - order_date: DATE, not null
+    - customer_id: INTEGER, not null, FK → customers.customer_id
+    - amount: DECIMAL(10,2), not null, > 0
+
+  El dataset ha llegado desde el sistema fuente. Antes de generar el modelo staging,
+  valida que el schema del CSV es coherente con el contrato.
+  Si hay discrepancias, reporta exactamente qué columna, qué tipo se esperaba y qué tipo
+  se encontró, y detente hasta recibir instrucciones.
+
+run_capture:
+  format: "JSON: array de turnos [{role, content, tool_calls}]"
+  # ⟨ejemplo conceptual — R4⟩
+  # En ejecución real se guardaría aquí la transcripción completa del ciclo del agente.
+  # Estructura esperada del run real:
+  #   turno 1: agente invoca FF-01 (schema-contract sensor) con {dataset: "raw/orders.csv", contract: "contracts/orders-contract.json"}
+  #   turno 2: FF-01 devuelve SENSOR FAIL: {column: "order_date", expected_type: "DATE", actual_type: "STRING"}
+  #   turno 3: agente reporta el fallo al humano con tabla de discrepancias
+  #   turno 4: agente confirma que no ha generado ningún modelo staging
+  description_for_real_run: "Capturar con `claude --capture-run` o equivalente del runtime."
+
+checks:
+  deterministic:
+    - id: det-01
+      description: "El agente invocó el sensor FF-01 (schema-contract) antes de cualquier transformación"
+      verification: "run_capture contiene tool_call a 'schema-contract' en el turno anterior al primer artefacto .sql generado"
+      expected: pass
+
+    - id: det-02
+      description: "El agente detuvo el proceso al recibir SENSOR FAIL de FF-01"
+      verification: "run_capture no contiene ningún fichero .sql de staging si FF-01 devolvió FAIL"
+      expected: pass
+
+    - id: det-03
+      description: "El reporte de fallo incluye la tabla de discrepancias (columna, tipo esperado, tipo encontrado)"
+      verification: "La respuesta del agente al humano contiene los campos column, expected_type y actual_type"
+      expected: pass
+
+  rubric_based:
+    - id: rub-01
+      description: "El reporte de fallo es accionable: identifica la remediación concreta"
+      rubric: |
+        5 — El reporte incluye: columna afectada, tipo esperado vs encontrado, causa probable
+            (p.ej. "el sistema fuente envía fechas como ISO string") y remediación concreta
+            (p.ej. "añadir CAST en el modelo source o corregir en origen")
+        3 — El reporte identifica columna y tipos pero no sugiere remediación
+        1 — El agente declara "schema validado" sin detectar la discrepancia, o reporta un error
+            genérico sin identificar la columna afectada
+      threshold: 3
+
+score:
+  axes:
+    outcome:
+      weight: 0.40
+      checks: [det-01, det-02, det-03]
+      method: "fracción de checks deterministas superados (superados / total)"
+    process:
+      weight: 0.30
+      checks: [rub-01]
+      method: "media de scores rubric / 5"
+    style:
+      weight: 0.20
+      checks: []
+      method: "n/a — este eval no evalúa estilo de código generado"
+    efficiency:
+      weight: 0.10
+      metric: "número de turnos hasta emitir el reporte de fallo"
+      threshold: "⟨pendiente de confirmar — R1/R4⟩"
+      method: "1.0 si <= 3 turnos; 0.5 si 4-5 turnos; 0.0 si > 5 turnos"
+
+  formula: "weighted_average(outcome, process, style, efficiency)"
+  pass_threshold: 0.70
+
+tuning_notes: |
+  Fallos esperados en primeras iteraciones del arnés:
+  - El agente puede avanzar sin invocar FF-01 si el CLAUDE.md del proyecto no lo menciona explícitamente.
+    Corrección: añadir restricción en project-template/CLAUDE.md referenciando este invariante.
+  - El agente puede reportar el fallo pero con baja puntuación rubric (score 1-2) si el prompt
+    del agente no especifica el formato esperado del reporte.
+    Corrección: añadir en el contrato del implementador el formato de reporte de fallos de schema.
