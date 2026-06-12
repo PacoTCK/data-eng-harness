@@ -54,26 +54,44 @@ data-eng-harness-v1/
 
 ## Instalación y compartición (The Cocktail)
 
-### Clonar el repositorio
+### Vía recomendada: instalación remota desde Bitbucket (`/plugin marketplace add`)
+
+El repositorio Bitbucket del equipo (`https://bitbucket.org/the-cocktail/data-eng-harness-central.git`) expone un marketplace en su raíz (`.claude-plugin/marketplace.json`) que apunta, vía `git-subdir`, al adaptador Claude Code de este arnés (`data-eng-harness-v1/adapters/claude-code/`). Para instalarlo, ejecutar dentro de Claude Code:
+
+```
+/plugin marketplace add https://bitbucket.org/the-cocktail/data-eng-harness-central.git
+/plugin install data-eng-harness-v1@data-eng-harness-v1-marketplace
+```
+
+El primer comando registra el marketplace remoto; el segundo instala el plugin `data-eng-harness-v1` desde ese marketplace. No requiere clonar el repo manualmente ni configurar rutas locales.
+
+Una vez instalado, el comando `inicia el planificador para realizar el proyecto usando agentes` activa la skill del ciclo de 4 agentes.
+
+### Vía local (desarrollo/pruebas sobre un checkout del repo)
+
+Si ya se tiene el repo clonado localmente, se puede registrar el marketplace anidado del propio adaptador en lugar del marketplace raíz:
 
 ```bash
-git clone {url_del_repo_interno}
+git clone https://bitbucket.org/the-cocktail/data-eng-harness-central.git
 cd data-eng-harness
 ```
 
-### Apuntar Claude Code al plugin
+```
+/plugin marketplace add ./data-eng-harness-v1/adapters/claude-code
+/plugin install data-eng-harness-v1@data-eng-harness-v1-marketplace
+```
+
+Alternativamente, sin marketplace, apuntando Claude Code directamente al directorio del plugin (carga solo para esa sesión, útil en desarrollo):
 
 ```bash
-claude --plugin data-eng-harness-v1/adapters/claude-code/
+claude --plugin-dir data-eng-harness-v1/adapters/claude-code/
 ```
 
 O añadir la ruta `adapters/claude-code/` como plugin en la configuración del proyecto de Claude Code (`settings.json` o equivalente).
 
-Una vez instalado, el comando `inicia el planificador para realizar el proyecto usando agentes` activa la skill del ciclo de 4 agentes.
-
 ### Compartición dentro de The Cocktail
 
-El arnés se distribuye como repositorio git. Cualquier miembro del equipo que clone el repo y apunte Claude Code al plugin puede ejecutar el ciclo completo. No hay dependencias de runtime adicionales más allá de Claude Code.
+El arnés se distribuye como repositorio git. Cualquier miembro del equipo puede instalarlo de forma remota con los dos comandos `/plugin marketplace add` + `/plugin install` de arriba, sin clonar nada. No hay dependencias de runtime adicionales más allá de Claude Code.
 
 Para compartir en un nuevo proyecto interno: incluir el repositorio como submódulo git o copiar el directorio `data-eng-harness-v1/` al repo del proyecto.
 

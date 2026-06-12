@@ -11,7 +11,7 @@ de diseño, ver `DESIGN.md` y `README.md`.
 Clonar el repositorio que contiene el arnés:
 
 ```bash
-git clone {url_del_repo_interno}
+git clone https://bitbucket.org/the-cocktail/data-eng-harness-central.git
 cd data-eng-harness
 ```
 
@@ -22,16 +22,28 @@ adicionales que instalar: el único runtime necesario es Claude Code.
 
 ## 2. Inicializar el arnés en un proyecto
 
-### 2.1 Apuntar Claude Code al plugin
+### 2.1 Registrar el plugin en Claude Code
 
-```bash
-claude --plugin data-eng-harness-v1/adapters/claude-code/
+Vía recomendada (sin clonar, desde el repo remoto): el repo expone
+`.claude-plugin/marketplace.json` en su raíz con un plugin `data-eng-harness-v1`
+de tipo `git-subdir` que apunta a `data-eng-harness-v1/adapters/claude-code/`.
+
+```
+/plugin marketplace add https://bitbucket.org/the-cocktail/data-eng-harness-central.git
+/plugin install data-eng-harness-v1@data-eng-harness-v1-marketplace
 ```
 
-O añadir la ruta `adapters/claude-code/` como plugin en la configuración del
-proyecto de Claude Code (`settings.json` o equivalente). Esto registra los
-cuatro agentes (`planificador`, `navegador`, `implementador`, `evaluador`) y
-la skill `eng-harness`.
+Vía local (sobre el checkout ya clonado en el paso 1), usando el marketplace
+anidado del propio adaptador:
+
+```
+/plugin marketplace add ./data-eng-harness-v1/adapters/claude-code
+/plugin install data-eng-harness-v1@data-eng-harness-v1-marketplace
+```
+
+Cualquiera de las dos vías registra los cuatro agentes (`planificador`,
+`navegador`, `implementador`, `evaluador`) y la skill `eng-harness`. Detalle
+completo en `README.md`, sección "Instalación y compartición (The Cocktail)".
 
 ### 2.2 Copiar la plantilla de proyecto
 
@@ -69,7 +81,7 @@ el planificador pueda identificar como activas o pendientes.
 
 | Comando | Qué hace |
 |---|---|
-| `claude --plugin data-eng-harness-v1/adapters/claude-code/` | Registra el plugin del arnés (4 agentes + skill `eng-harness`) en Claude Code. |
+| `/plugin marketplace add <url-del-repo>` + `/plugin install data-eng-harness-v1@data-eng-harness-v1-marketplace` | Registra el plugin del arnés (4 agentes + skill `eng-harness`) en Claude Code (ver §2.1). |
 | `/eng-harness` (o escribir "usar el arnes de ingenieria") | Dispara la skill del ciclo: ejecuta el protocolo de sesión (D9) — re-entrada, ciclo de 4 agentes, cierre — para **una** tarea. |
 | `/clear` | Limpia el contexto de la sesión tras el checkpoint humano de cierre, antes de arrancar la siguiente sesión. |
 

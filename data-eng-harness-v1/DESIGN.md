@@ -188,8 +188,9 @@ La skill materializa el patrón de orquestación de `core/orchestration/cycle.md
 
 | Fichero | Propósito |
 |---|---|
-| `.claude-plugin/plugin.json` | Manifiesto del plugin: `name`, `displayName`, `version`, `skills` apuntando a `../skills`. |
-| `.claude-plugin/marketplace.json` | Catálogo del marketplace: registra el plugin con source `./` e instrucciones de instalación. |
+| `.claude-plugin/plugin.json` | Manifiesto del plugin: `name`, `displayName`, `version`, `skills` apuntando a `./skills`. |
+| `.claude-plugin/marketplace.json` | Catálogo del marketplace local del adaptador: registra el plugin con source `./`, para `/plugin marketplace add ./data-eng-harness-v1/adapters/claude-code` (instalación local/pruebas). |
+| `.claude-plugin/marketplace.json` en la raíz del repo (fuera de `data-eng-harness-v1/`) | Catálogo del marketplace remoto: registra el plugin con source `git-subdir` apuntando a `data-eng-harness-v1/adapters/claude-code`, para `/plugin marketplace add <url-del-repo>` (vía recomendada para el equipo). |
 
 ### 4.4 Frontera core/adaptador (O3, R3)
 
@@ -390,18 +391,23 @@ El arnés se distribuye como un repositorio git clonable. No requiere instalaci�
 
 ### 8.1 Instrucciones de instalación
 
+Vía recomendada (equipo, sin clonar): el repo expone `.claude-plugin/marketplace.json` en su raíz con un plugin `data-eng-harness-v1` de tipo `git-subdir` que apunta a `data-eng-harness-v1/adapters/claude-code/`.
+
 ```
-git clone {url_del_repo}
+/plugin marketplace add https://bitbucket.org/the-cocktail/data-eng-harness-central.git
+/plugin install data-eng-harness-v1@data-eng-harness-v1-marketplace
+```
+
+Vía local (desarrollo/pruebas sobre un checkout): registrar el marketplace anidado del propio adaptador.
+
+```
+git clone https://bitbucket.org/the-cocktail/data-eng-harness-central.git
 cd data-eng-harness
+/plugin marketplace add ./data-eng-harness-v1/adapters/claude-code
+/plugin install data-eng-harness-v1@data-eng-harness-v1-marketplace
 ```
 
-Apuntar Claude Code al plugin del adaptador:
-
-```
-claude --plugin data-eng-harness-v1/adapters/claude-code/
-```
-
-O añadir el directorio `adapters/claude-code/` como plugin en la configuración del proyecto de Claude Code.
+Detalle completo en `README.md`, sección "Instalación y compartición (The Cocktail)".
 
 ### 8.2 Cómo arrancar el ciclo
 
@@ -447,7 +453,7 @@ Esta sección registra las decisiones de diseño del arnés con sus justificacio
 | D3 | Estado en repo, markdown/JSON como sistema de registro. | P2, P3, O4 | `core/state-templates/state.json`, `core/state-templates/progress.md`, `tasks/*.json`, `project-template/docs/` |
 | D4 | Invariantes de datos como sensores mecánicos, no prosa. | P8, P9 | `core/sensors/catalog.md`, `core/sensors/fast-feedback/`, `core/sensors/drift-periodic/` |
 | D5 | Una tarea por iteración como regla del bucle. | P4 | `core/orchestration/stop-conditions.md`, `adapters/claude-code/skills/harness/SKILL.md` |
-| D6 | Empaquetado como plugin/clonable. | O2 | `adapters/claude-code/.claude-plugin/plugin.json`, `adapters/claude-code/.claude-plugin/marketplace.json` |
+| D6 | Empaquetado como plugin/clonable, instalable vía `/plugin marketplace add` (remoto con `git-subdir` o local). | O2 | `adapters/claude-code/.claude-plugin/plugin.json`, `adapters/claude-code/.claude-plugin/marketplace.json` (local), `.claude-plugin/marketplace.json` en la raíz del repo (remoto) |
 | D7 | Handoff via Structured Contract (vs Shared Blackboard vs Direct Message Passing). | P5, P14 | `core/state-templates/task-contract.json`, `core/state-templates/handoff-protocol.md` |
 | D8 | Orquestador como hilo principal separado del planificador. | P6, P13 | Definido en `core/orchestration/cycle.md`; materializado en `adapters/claude-code/skills/harness/SKILL.md` |
 | D9 | Protocolo de sesión único con política de checkpoint parametrizable (re-entrada → ciclo de 4 agentes → cierre de sesión; regla "una tarea por sesión"; contrato de checkpoint humano). | P2, P4, P11, P13 | `core/orchestration/session-protocol.md`, `core/orchestration/cycle.md` (diagrama de cierre de sesión), `adapters/claude-code/skills/harness/SKILL.md` (§1.1, §4.2 de este documento) |

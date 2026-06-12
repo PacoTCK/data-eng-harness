@@ -1,0 +1,18 @@
+{
+  "name": "data-eng-harness-v1-marketplace",
+  "owner": {
+    "name": "Francisco Luque",
+    "email": "pacojluque@hotmail.com"
+  },
+  "plugins": [
+    {
+      "name": "data-eng-harness-v1",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://bitbucket.org/the-cocktail/data-eng-harness-central.git",
+        "path": "data-eng-harness-v1/adapters/claude-code"
+      },
+      "description": "Arnés de agentes v3 para ingeniería de datos en The Cocktail. Ciclo planificador → navegador → implementador → evaluador con human-in-the-loop. Instalable directamente desde Bitbucket vía /plugin marketplace add."
+    }
+  ]
+}
