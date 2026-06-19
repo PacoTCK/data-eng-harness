@@ -1,7 +1,7 @@
 # Perfil de stack del proyecto (D11)
 #
 # Contrato que cada proyecto rellena para instanciar las CATEGORÍAS de sensor que
-# define el core (`../core/sensors/`). El core conoce categorías parametrizables, no
+# define el core (`${CLAUDE_PLUGIN_ROOT}/core/sensors/`). El core conoce categorías parametrizables, no
 # herramientas concretas (D11, hard_spec.md §5). Este fichero es la pieza que conecta
 # ambos mundos: cada campo "instancia" una categoría de sensor concreta.
 #

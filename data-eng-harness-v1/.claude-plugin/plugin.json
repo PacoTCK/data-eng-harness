@@ -1,0 +1,22 @@
+{
+  "name": "data-eng-harness-v1",
+  "displayName": "Data Engineering Agent Harness v3",
+  "version": "3.0.0",
+  "description": "Arnés portable para agentes de coding orientado a tareas de ingeniería de datos. Implementa un ciclo de 4 agentes especializados (planificador, navegador, implementador, evaluador) con human-in-the-loop. Core model-agnostic; la capa de ejecución Claude Code vive en adapters/claude-code/.",
+  "author": {
+    "name": "Francisco Luque",
+    "email": "pacojluque@hotmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "harness",
+    "agents",
+    "data-engineering",
+    "orchestration",
+    "human-in-the-loop",
+    "the-cocktail"
+  ],
+  "agents": "./adapters/claude-code/agents",
+  "skills": "./adapters/claude-code/skills",
+  "_root_note": "La raíz del plugin es data-eng-harness-v1/ (NO adapters/claude-code/). Esto hace el plugin autocontenido: core/, project-template/ y docs/ quedan bajo ${CLAUDE_PLUGIN_ROOT}, accesibles en runtime tras /plugin install. Los campos agents/skills apuntan a la capa vendor-specific (Claude Code) en adapters/claude-code/; el core portable y model-agnostic vive en ./core/. Para sustituir Claude Code por otro runtime, reemplazar adapters/claude-code/ manteniendo el core intacto (hard_spec.md §3.3, objetivo O3)."
+}

@@ -9,7 +9,7 @@ description: |
   NO invoca al implementador ni al evaluador — eso es responsabilidad del
   orquestador. Se spawna al inicio de cada sesión (secuencia de re-entrada,
   D9) y al cierre (para registrar el veredicto del evaluador).
-  Contrato model-agnostic: ../../../core/contracts/planificador.md
+  Contrato model-agnostic: core/contracts/planificador.md (ruta absoluta provista por el orquestador al spawnear).
 tools: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, Agent, Bash
 ---
 
@@ -21,11 +21,15 @@ contrato. La lógica del bucle vive en el orquestador, no aquí.
 
 ## Procedimiento al inicio de sesión (secuencia de re-entrada, D9)
 
-0. **Leer mi contrato completo en `../../../core/contracts/planificador.md` ANTES de actuar** —
-   ese fichero es la fuente de verdad de mi rol, entradas, salidas, criterio de "done", criterio
-   de parada y restricciones. Este fichero (el adaptador) solo añade la capa de ejecución Claude
-   Code (qué herramientas usar y cómo responder). También leer el protocolo de sesión (D9) en
-   `../../core/orchestration/session-protocol.md`.
+0. **Leer mi contrato completo ANTES de actuar.** El orquestador me pasa al spawnearme la ruta
+   absoluta de mi contrato (`<PLUGIN_ROOT>/core/contracts/planificador.md`, donde `<PLUGIN_ROOT>`
+   es la raíz del plugin instalado). Léelo con `Read` sobre esa ruta absoluta. Si el orquestador
+   no la incluyó, resuélvela: `echo $CLAUDE_PLUGIN_ROOT` con `Bash` y lee
+   `$CLAUDE_PLUGIN_ROOT/core/contracts/planificador.md`. Ese fichero es la fuente de verdad de mi
+   rol, entradas, salidas, criterio de "done", criterio de parada y restricciones. Este fichero
+   (el adaptador) solo añade la capa de ejecución Claude Code (qué herramientas usar y cómo
+   responder). También leer el protocolo de sesión (D9) en
+   `$CLAUDE_PLUGIN_ROOT/core/orchestration/session-protocol.md`.
 
 1. Leer `state.json` — identificar la tarea `in_progress` o, si no hay ninguna, la siguiente `pending`.
 2. Leer la última entrada de `progress.md` — qué se hizo en la sesión anterior, bugs conocidos, siguiente paso anotado.

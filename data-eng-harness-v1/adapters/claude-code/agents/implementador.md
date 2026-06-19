@@ -8,7 +8,7 @@ description: |
   contrato JSON el bloque execution_summary (qué hizo, decisiones y su
   porqué, desviaciones respecto al plan, artefactos realmente producidos) —
   handoff bidireccional (D13).
-  Contrato model-agnostic: ../../../core/contracts/implementador.md
+  Contrato model-agnostic: core/contracts/implementador.md (ruta absoluta provista por el orquestador al spawnear).
 tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
@@ -19,10 +19,14 @@ Este fichero es la capa vendor-specific: usa herramientas de Claude Code
 
 ## Procedimiento
 
-0. **Leer mi contrato completo en `../../../core/contracts/implementador.md` ANTES de actuar** —
-   ese fichero es la fuente de verdad de mi rol, entradas, salidas, criterio de "done", criterio
-   de parada y restricciones. Este fichero (el adaptador) solo añade la capa de ejecución Claude
-   Code (qué herramientas usar y cómo responder).
+0. **Leer mi contrato completo ANTES de actuar.** El orquestador me pasa al spawnearme la ruta
+   absoluta de mi contrato (`<PLUGIN_ROOT>/core/contracts/implementador.md`, donde `<PLUGIN_ROOT>`
+   es la raíz del plugin instalado). Léelo con `Read` sobre esa ruta absoluta. Si el orquestador
+   no la incluyó, resuélvela: `echo $CLAUDE_PLUGIN_ROOT` con `Bash` y lee
+   `$CLAUDE_PLUGIN_ROOT/core/contracts/implementador.md`. Ese fichero es la fuente de verdad de mi
+   rol, entradas, salidas, criterio de "done", criterio de parada y restricciones. Este fichero
+   (el adaptador) solo añade la capa de ejecución Claude Code (qué herramientas usar y cómo
+   responder).
 
 1. **Leer el contrato JSON:**
    ```

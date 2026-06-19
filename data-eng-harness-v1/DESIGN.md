@@ -161,10 +161,12 @@ Cada agente se define en `adapters/claude-code/agents/{rol}.md` con dos seccione
 
 | Agente | Fichero | Tools declarados | Referencia al core |
 |---|---|---|---|
-| planificador | `agents/planificador.md` | Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, Agent, Bash | `../../core/contracts/planificador.md` |
-| navegador | `agents/navegador.md` | Read, Glob, Grep, Bash, WebFetch, WebSearch | `../../core/contracts/navegador.md` |
-| implementador | `agents/implementador.md` | Read, Write, Edit, Glob, Grep, Bash | `../../core/contracts/implementador.md` |
-| evaluador | `agents/evaluador.md` | Read, Glob, Grep, Bash | `../../core/contracts/evaluador.md` |
+| planificador | `agents/planificador.md` | Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, Agent, Bash | `${CLAUDE_PLUGIN_ROOT}/core/contracts/planificador.md` |
+| navegador | `agents/navegador.md` | Read, Glob, Grep, Bash, WebFetch, WebSearch | `${CLAUDE_PLUGIN_ROOT}/core/contracts/navegador.md` |
+| implementador | `agents/implementador.md` | Read, Write, Edit, Glob, Grep, Bash | `${CLAUDE_PLUGIN_ROOT}/core/contracts/implementador.md` |
+| evaluador | `agents/evaluador.md` | Read, Glob, Grep, Bash | `${CLAUDE_PLUGIN_ROOT}/core/contracts/evaluador.md` |
+
+> Nota de runtime: el agente no usa rutas relativas `../` para leer su contrato. Instalado como plugin, el contrato vive en el caché del plugin bajo `${CLAUDE_PLUGIN_ROOT}/core/contracts/`, no relativo al directorio de trabajo del proyecto. El orquestador resuelve `${CLAUDE_PLUGIN_ROOT}` una vez (secuencia de re-entrada) y pasa la ruta absoluta del contrato en el prompt de cada subagente.
 
 El frontmatter YAML define `name`, `description` y `tools` para que Claude Code registre el agente. El body añade únicamente las instrucciones de ejecución Claude Code: cómo invocar tools, cómo estructurar la respuesta al orquestador.
 
@@ -453,7 +455,7 @@ Esta sección registra las decisiones de diseño del arnés con sus justificacio
 | D3 | Estado en repo, markdown/JSON como sistema de registro. | P2, P3, O4 | `core/state-templates/state.json`, `core/state-templates/progress.md`, `tasks/*.json`, `project-template/docs/` |
 | D4 | Invariantes de datos como sensores mecánicos, no prosa. | P8, P9 | `core/sensors/catalog.md`, `core/sensors/fast-feedback/`, `core/sensors/drift-periodic/` |
 | D5 | Una tarea por iteración como regla del bucle. | P4 | `core/orchestration/stop-conditions.md`, `adapters/claude-code/skills/harness/SKILL.md` |
-| D6 | Empaquetado como plugin/clonable, instalable vía `/plugin marketplace add` (remoto con `git-subdir` o local). | O2 | `adapters/claude-code/.claude-plugin/plugin.json`, `adapters/claude-code/.claude-plugin/marketplace.json` (local), `.claude-plugin/marketplace.json` en la raíz del repo (remoto) |
+| D6 | Empaquetado como plugin autocontenido (raíz del plugin = `data-eng-harness-v1/`, con `core/`/`project-template/`/`docs/` incluidos), instalable vía `/plugin marketplace add` (remoto con `git-subdir path: data-eng-harness-v1` o local). | O2 | `.claude-plugin/plugin.json` y `.claude-plugin/marketplace.json` en la raíz del arnés (`data-eng-harness-v1/`); `.claude-plugin/marketplace.json` en la raíz del repo (remoto, `git-subdir` → `data-eng-harness-v1`). El manifest apunta `agents`/`skills` a `adapters/claude-code/`. |
 | D7 | Handoff via Structured Contract (vs Shared Blackboard vs Direct Message Passing). | P5, P14 | `core/state-templates/task-contract.json`, `core/state-templates/handoff-protocol.md` |
 | D8 | Orquestador como hilo principal separado del planificador. | P6, P13 | Definido en `core/orchestration/cycle.md`; materializado en `adapters/claude-code/skills/harness/SKILL.md` |
 | D9 | Protocolo de sesión único con política de checkpoint parametrizable (re-entrada → ciclo de 4 agentes → cierre de sesión; regla "una tarea por sesión"; contrato de checkpoint humano). | P2, P4, P11, P13 | `core/orchestration/session-protocol.md`, `core/orchestration/cycle.md` (diagrama de cierre de sesión), `adapters/claude-code/skills/harness/SKILL.md` (§1.1, §4.2 de este documento) |

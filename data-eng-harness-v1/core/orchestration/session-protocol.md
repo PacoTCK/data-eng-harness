@@ -103,6 +103,17 @@ descrita abajo.
 Al inicio de cada sesión, el orquestador reconstruye el contexto necesario sin depender de la
 memoria de la sesión anterior:
 
+0. **Bootstrap de `project-template/` y artefactos de estado (D14, solo si no se ha hecho antes).**
+   Antes de leer `state.json` (paso 1), el adaptador comprueba si `project-template/` (o su
+   equivalente ya renombrado/adaptado por el proyecto) y los artefactos de estado de
+   `core/state-templates/` (`state.json`, `progress.md`) ya están materializados en el repositorio
+   del proyecto del usuario. Si faltan, el adaptador los copia desde la instalación del arnés
+   resolviendo la ruta raíz del plugin en el entorno del agente —bajo la cual cuelgan directamente
+   `project-template/` y `core/`— y copiándolos desde ahí; si la detección o la copia fallan, cae al
+   `cp -r` manual documentado como fallback en `SETUP.md` §2.2. Ver D14
+   (`hard_spec.md` §5) para el mecanismo completo. Este paso es **idempotente** y **no
+   sobrescribe**: si la detección encuentra los artefactos ya presentes (con cualquier contenido),
+   no hace nada y la secuencia continúa directamente en el paso 1.
 1. **Leer `state.json`** — índice de bloques/tareas y su campo de estado actual.
 2. **Identificar la tarea activa** (`in_progress`) o, si no hay ninguna, **la siguiente `pending`**.
 3. **Leer la última entrada de `progress.md`** — qué se hizo en la sesión anterior, bugs conocidos,
@@ -125,6 +136,13 @@ memoria de la sesión anterior:
 > operación (comprobar que el repo coincide con lo que dice el estado persistido, y recuperar el
 > último estado verificado si hace falta), no una llamada obligatoria a `git` específicamente;
 > cualquier sistema de control de versiones del proyecto sirve.
+
+> Nota model-agnostic (paso 0, D14): "la ruta raíz del plugin" (`${CLAUDE_PLUGIN_ROOT}` en Claude
+> Code) y "el entorno del agente" (la herramienta de shell disponible, p. ej. `Bash`) son ejemplos
+> concretos del adaptador Claude Code. El mecanismo —detectar si los artefactos de plantilla ya
+> están materializados, copiarlos condicionalmente desde la instalación del arnés si faltan, y caer
+> a una copia manual documentada si la detección o la copia fallan— no depende de una API
+> específica de un proveedor; la dependencia de runtime concreta vive en `adapters/`.
 
 ---
 

@@ -2,7 +2,7 @@
 
 > Propósito: documentar la arquitectura por capas elegida, sus invariantes y las
 > responsabilidades de cada capa.
-> Coherente con `../../data-conventions.md` y los sensores de `../../../core/sensors/`.
+> Coherente con `../../data-conventions.md` y los sensores de `${CLAUDE_PLUGIN_ROOT}/core/sensors/`.
 
 ---
 
@@ -49,4 +49,4 @@
 
 - [RELLENAR: condiciones que un dataset debe cumplir para promoverse de capa.]
 - Un dataset no puede saltarse capas sin aprobación de arquitectura (registrar en `decisions.md`).
-- Todo cambio de schema entre capas debe reflejarse en el contrato de datos del asset (ver `../quality/slas.md` y sensor FF-01 en `../../../core/sensors/fast-feedback/schema-contract.md`).
+- Todo cambio de schema entre capas debe reflejarse en el contrato de datos del asset (ver `../quality/slas.md` y sensor FF-01 en `${CLAUDE_PLUGIN_ROOT}/core/sensors/fast-feedback/schema-contract.md`).

@@ -5,7 +5,7 @@ description: |
   cuando necesita extraer información de artículos del corpus, fuentes externas
   o documentos del repositorio. Devuelve un brief estructurado con referencias
   exactas. Solo lee, nunca escribe ni edita ningún fichero.
-  Contrato model-agnostic: ../../../core/contracts/navegador.md
+  Contrato model-agnostic: core/contracts/navegador.md (ruta absoluta provista por el planificador/orquestador al spawnear).
 tools: Read, Glob, Grep, Bash, WebFetch, WebSearch
 ---
 
@@ -17,8 +17,12 @@ concretas del planificador.
 
 ## Procedimiento
 
-0. **Leer mi contrato completo en `../../../core/contracts/navegador.md` ANTES de actuar** —
-   ese fichero es la fuente de verdad de mi rol, entradas, salidas, criterio de "done", criterio
+0. **Leer mi contrato completo ANTES de actuar.** Quien me spawnea (el planificador, o el
+   orquestador) me pasa la ruta absoluta de mi contrato
+   (`<PLUGIN_ROOT>/core/contracts/navegador.md`, donde `<PLUGIN_ROOT>` es la raíz del plugin
+   instalado). Léelo con `Read` sobre esa ruta absoluta. Si no la incluyó, resuélvela:
+   `echo $CLAUDE_PLUGIN_ROOT` con `Bash` y lee `$CLAUDE_PLUGIN_ROOT/core/contracts/navegador.md`.
+   Ese fichero es la fuente de verdad de mi rol, entradas, salidas, criterio de "done", criterio
    de parada y restricciones. Este fichero (el adaptador) solo añade la capa de ejecución Claude
    Code (qué herramientas usar y cómo responder).
 

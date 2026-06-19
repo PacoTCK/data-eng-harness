@@ -10,9 +10,9 @@
       "source": {
         "source": "git-subdir",
         "url": "https://bitbucket.org/the-cocktail/data-eng-harness-central.git",
-        "path": "data-eng-harness-v1/adapters/claude-code"
+        "path": "data-eng-harness-v1"
       },
-      "description": "Arnés de agentes v3 para ingeniería de datos en The Cocktail. Ciclo planificador → navegador → implementador → evaluador con human-in-the-loop. Instalable directamente desde Bitbucket vía /plugin marketplace add."
+      "description": "Arnés de agentes v3 para ingeniería de datos en The Cocktail. Ciclo planificador → navegador → implementador → evaluador con human-in-the-loop. Plugin autocontenido: el git-subdir cachea data-eng-harness-v1/ completo (core/, project-template/, docs/ incluidos), accesible vía ${CLAUDE_PLUGIN_ROOT}. Instalable directamente desde Bitbucket vía /plugin marketplace add."
     }
   ]
 }

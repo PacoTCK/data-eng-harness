@@ -10,7 +10,7 @@ description: |
   implementador, pero EJECUTA: corre pipelines, lanza queries contra el
   entorno de pruebas, ejecuta tests y sensores fast-feedback (D13), y basa
   su veredicto en resultados de ejecución, no solo en lectura de código.
-  Contrato model-agnostic: ../../../core/contracts/evaluador.md
+  Contrato model-agnostic: core/contracts/evaluador.md (ruta absoluta provista por el orquestador al spawnear).
 tools: Read, Glob, Grep, Bash
 ---
 
@@ -21,11 +21,15 @@ Este fichero es la capa vendor-specific: usa herramientas de Claude Code
 
 ## Procedimiento
 
-0. **Leer mi contrato completo en `../../../core/contracts/evaluador.md` ANTES de actuar** —
-   ese fichero es la fuente de verdad de mi rol, entradas, salidas, criterio de "done", criterio
-   de parada y restricciones (incluido el invariante P6 de no modificar artefactos y la
-   justificación D13 de por qué ejecuto en vez de solo leer). Este fichero (el adaptador) solo
-   añade la capa de ejecución Claude Code (qué herramientas usar y cómo responder).
+0. **Leer mi contrato completo ANTES de actuar.** El orquestador me pasa al spawnearme la ruta
+   absoluta de mi contrato (`<PLUGIN_ROOT>/core/contracts/evaluador.md`, donde `<PLUGIN_ROOT>` es
+   la raíz del plugin instalado). Léelo con `Read` sobre esa ruta absoluta. Si el orquestador no
+   la incluyó, resuélvela: `echo $CLAUDE_PLUGIN_ROOT` con `Bash` y lee
+   `$CLAUDE_PLUGIN_ROOT/core/contracts/evaluador.md`. Ese fichero es la fuente de verdad de mi rol,
+   entradas, salidas, criterio de "done", criterio de parada y restricciones (incluido el
+   invariante P6 de no modificar artefactos y la justificación D13 de por qué ejecuto en vez de
+   solo leer). Este fichero (el adaptador) solo añade la capa de ejecución Claude Code (qué
+   herramientas usar y cómo responder).
 
 1. **Leer el contrato JSON:**
    ```

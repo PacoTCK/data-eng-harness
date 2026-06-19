@@ -2,7 +2,7 @@
 
 > Lectura recomendada antes de que el agente modifique cualquier modelo, pipeline o
 > contrato de datos.
-> Coherente con los sensores de `../../core/sensors/` y con la terminología de los
+> Coherente con los sensores de `${CLAUDE_PLUGIN_ROOT}/core/sensors/` y con la terminología de los
 > contratos de datos que esos sensores consumen (campos `owner`, `sla_hours`, `max_dependencies`).
 
 ---
@@ -153,14 +153,14 @@ automáticamente; no es necesario añadirlas a mano en cada pipeline.
 
 | Invariante | Sensor que la verifica | Referencia |
 |---|---|---|
-| Schema de tabla coincide con el contrato declarado | FF-01 | `../../core/sensors/fast-feedback/schema-contract.md` |
-| Columnas críticas no contienen nulos | FF-02 | `../../core/sensors/fast-feedback/data-quality.md` |
-| Clave primaria sin duplicados | FF-02 | `../../core/sensors/fast-feedback/data-quality.md` |
+| Schema de tabla coincide con el contrato declarado | FF-01 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/fast-feedback/schema-contract.md` |
+| Columnas críticas no contienen nulos | FF-02 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/fast-feedback/data-quality.md` |
+| Clave primaria sin duplicados | FF-02 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/fast-feedback/data-quality.md` |
 | Dataset actualizado dentro del SLA declarado | FF-02 | `docs/quality/slas.md` |
 | Volume dentro de umbrales `min_rows` / `max_rows` | FF-02 | `docs/quality/slas.md` |
-| Tests unitarios e integración del pipeline pasan | FF-03 | `../../core/sensors/fast-feedback/pipeline-tests.md` |
-| SQL y Python cumplen reglas de estilo del equipo | FF-04 | `../../core/sensors/fast-feedback/sql-lint.md` |
-| Todo asset en capa expuesta tiene owner documentado | DP-03 | `../../core/sensors/drift-periodic/catalog-completeness.md` |
+| Tests unitarios e integración del pipeline pasan | FF-03 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/fast-feedback/pipeline-tests.md` |
+| SQL y Python cumplen reglas de estilo del equipo | FF-04 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/fast-feedback/sql-lint.md` |
+| Todo asset en capa expuesta tiene owner documentado | DP-03 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/drift-periodic/catalog-completeness.md` |
 
 Reglas adicionales **propias de este proyecto**:
 
@@ -178,7 +178,7 @@ proyecto instancia mediante su **perfil de stack** (D11, hard_spec.md §5).
 
 El perfil de stack de este proyecto se declara en `stack-profile.yml` (raíz del
 proyecto). Cada campo de ese fichero instancia una categoría de sensor de
-`../../core/sensors/`:
+`${CLAUDE_PLUGIN_ROOT}/core/sensors/`:
 
 | Categoría de sensor (core) | Campo de `stack-profile.yml` | Opciones habituales |
 |---|---|---|
@@ -209,19 +209,19 @@ BI) que no condiciona directamente a los sensores del core se declara en
 
 ### Qué viene del core (no modificar)
 
-Los sensores del core (`../../core/sensors/`) son especificaciones portables que aplican
+Los sensores del core (`${CLAUDE_PLUGIN_ROOT}/core/sensors/`) son especificaciones portables que aplican
 a todos los proyectos del equipo de ingeniería de datos. Definen **qué** se comprueba
 y **qué feedback** emite cada sensor. No dependen del stack concreto del proyecto.
 
 | Elemento core | Ruta | Qué hace |
 |---|---|---|
-| Sensor FF-01 | `../../core/sensors/fast-feedback/schema-contract.md` | Verifica schema vs contrato |
-| Sensor FF-02 | `../../core/sensors/fast-feedback/data-quality.md` | Verifica calidad, freshness, volume |
-| Sensor FF-03 | `../../core/sensors/fast-feedback/pipeline-tests.md` | Verifica tests del pipeline |
-| Sensor FF-04 | `../../core/sensors/fast-feedback/sql-lint.md` | Verifica estilo de código |
-| Sensor DP-01 | `../../core/sensors/drift-periodic/golden-data-principles.md` | Golden data audit periódico |
-| Sensor DP-02 | `../../core/sensors/drift-periodic/lineage-staleness.md` | Detección de lineage desactualizado |
-| Sensor DP-03 | `../../core/sensors/drift-periodic/catalog-completeness.md` | Completitud del catálogo |
+| Sensor FF-01 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/fast-feedback/schema-contract.md` | Verifica schema vs contrato |
+| Sensor FF-02 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/fast-feedback/data-quality.md` | Verifica calidad, freshness, volume |
+| Sensor FF-03 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/fast-feedback/pipeline-tests.md` | Verifica tests del pipeline |
+| Sensor FF-04 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/fast-feedback/sql-lint.md` | Verifica estilo de código |
+| Sensor DP-01 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/drift-periodic/golden-data-principles.md` | Golden data audit periódico |
+| Sensor DP-02 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/drift-periodic/lineage-staleness.md` | Detección de lineage desactualizado |
+| Sensor DP-03 | `${CLAUDE_PLUGIN_ROOT}/core/sensors/drift-periodic/catalog-completeness.md` | Completitud del catálogo |
 
 ### Qué es específico de este proyecto (aquí, en project-template/)
 

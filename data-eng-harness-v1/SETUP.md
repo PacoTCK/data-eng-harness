@@ -26,7 +26,9 @@ adicionales que instalar: el único runtime necesario es Claude Code.
 
 Vía recomendada (sin clonar, desde el repo remoto): el repo expone
 `.claude-plugin/marketplace.json` en su raíz con un plugin `data-eng-harness-v1`
-de tipo `git-subdir` que apunta a `data-eng-harness-v1/adapters/claude-code/`.
+de tipo `git-subdir` que apunta a la raíz del arnés `data-eng-harness-v1/` (el
+plugin completo y autocontenido, con `core/`, `project-template/` y `docs/`
+incluidos en el caché del plugin).
 
 ```
 /plugin marketplace add https://bitbucket.org/the-cocktail/data-eng-harness-central.git
@@ -34,10 +36,10 @@ de tipo `git-subdir` que apunta a `data-eng-harness-v1/adapters/claude-code/`.
 ```
 
 Vía local (sobre el checkout ya clonado en el paso 1), usando el marketplace
-anidado del propio adaptador:
+del propio arnés (su raíz, `data-eng-harness-v1/`):
 
 ```
-/plugin marketplace add ./data-eng-harness-v1/adapters/claude-code
+/plugin marketplace add ./data-eng-harness-v1
 /plugin install data-eng-harness-v1@data-eng-harness-v1-marketplace
 ```
 
@@ -46,6 +48,14 @@ Cualquiera de las dos vías registra los cuatro agentes (`planificador`,
 completo en `README.md`, sección "Instalación y compartición (The Cocktail)".
 
 ### 2.2 Copiar la plantilla de proyecto
+
+> Este paso manual es el **fallback** documentado del paso 0 automático de
+> bootstrap (D14, `hard_spec.md` §5) que ejecuta la skill `eng-harness` al
+> primer uso del proyecto. Normalmente **no es necesario ejecutarlo a mano**:
+> la skill detecta si `project-template/` y los artefactos de estado ya
+> existen y, si faltan, los copia desde la instalación del arnés. Usa este
+> `cp -r` manual solo si el paso 0 automático falla (p. ej. `CLAUDE_PLUGIN_ROOT`
+> no resuelve, el entorno no tiene `Bash` disponible, u otro error).
 
 ```bash
 cp -r data-eng-harness-v1/project-template/ {ruta_del_nuevo_proyecto}/
@@ -59,6 +69,11 @@ Copiar al proyecto las plantillas de `core/state-templates/`:
   `in_progress` / `complete` / `failed`).
 - `progress.md` — notas de sesión, append-only.
 - `dudas.md` — preguntas abiertas al cliente o al equipo.
+
+> Igual que en §2.2, esta copia manual es el fallback del paso 0 automático de
+> bootstrap (D14): la skill `eng-harness` copia `state.json` y `progress.md`
+> junto con `project-template/` la primera vez que se ejecuta en el proyecto,
+> si aún no existen.
 
 ### 2.4 Rellenar la configuración del proyecto
 
@@ -93,7 +108,10 @@ tarea por sesión", D9). El detalle del ciclo está en
 
 ## 4. Operación diaria
 
-1. Arrancar sesión → escribir `/eng-harness`.
+1. Arrancar sesión → escribir `/eng-harness`. La primera vez en un proyecto,
+   la skill ejecuta automáticamente el paso 0 de bootstrap (D14): comprueba si
+   `project-template/`, `state.json` y `progress.md` ya existen y, si faltan,
+   los copia desde la instalación del arnés (ver §2.2).
 2. El orquestador ejecuta la secuencia de re-entrada: lee `state.json`,
    `progress.md` y el historial de control de versiones.
 3. Ciclo de 4 agentes: planificador → implementador → evaluador →

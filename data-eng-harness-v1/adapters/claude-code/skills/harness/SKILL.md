@@ -24,6 +24,9 @@ definidos en `adapters/claude-code/agents/`.
 > invocación. No encadena varias tareas en la misma ventana de contexto.
 
 ```
+[bootstrap de project-template/ y estado (D14, solo primera vez)]
+  │
+  ▼
 [secuencia de re-entrada]
   │
   ├─► leer state.json → identificar tarea in_progress o siguiente pending
@@ -55,12 +58,52 @@ orquestador (esta sesión)
 
 ## Workflow
 
-### 0. Secuencia de re-entrada (arranque de la sesión)
+### 0. Bootstrap de project-template/ y artefactos de estado (D14)
+
+Antes de leer `state.json` (paso siguiente), el orquestador comprueba si el
+proyecto del usuario ya tiene materializados `project-template/` y los
+artefactos de estado de `core/state-templates/` (`state.json`,
+`progress.md`). Este paso se ejecuta **una vez por proyecto** y es
+**idempotente**: si los artefactos ya existen (con cualquier contenido), no
+hace nada y la secuencia continúa directamente en el paso de re-entrada
+siguiente (D9). Ver `hard_spec.md` §5 D14 para el mecanismo completo.
+
+1. **Detección**: `Glob`/`Read` para comprobar si `project-template/` (o su
+   equivalente ya materializado/renombrado por el proyecto) y
+   `state.json`/`progress.md` ya existen en el repositorio del proyecto del
+   usuario.
+2. **Copia condicional**: si faltan, resolver `${CLAUDE_PLUGIN_ROOT}` con la
+   herramienta `Bash` en el entorno del agente y copiar `project-template/` y
+   las plantillas de `core/state-templates/` necesarias desde el árbol del
+   plugin cacheado, usando las rutas
+   `${CLAUDE_PLUGIN_ROOT}/project-template/` y
+   `${CLAUDE_PLUGIN_ROOT}/core/state-templates/`. La raíz del plugin
+   (`${CLAUDE_PLUGIN_ROOT}`) es `data-eng-harness-v1/` — el plugin es
+   autocontenido: `core/`, `project-template/` y `docs/` cuelgan directamente de
+   ella (ver `.claude-plugin/plugin.json`, que apunta `agents`/`skills` a
+   `adapters/claude-code/` pero deja la raíz en `data-eng-harness-v1/`). No se
+   usan rutas `../` que treparían fuera del caché del plugin.
+3. **Fallback**: si `${CLAUDE_PLUGIN_ROOT}` no resuelve, `Bash` no está
+   disponible, o la copia falla por cualquier motivo, informar al humano y
+   remitir explícitamente al `cp -r` manual de `SETUP.md` §2.2 como vía de
+   recuperación documentada — el mecanismo automático nunca es la única vía.
+4. **Idempotencia y no-sobrescritura**: si la detección del paso 1 encuentra
+   los artefactos ya presentes, este paso no hace nada y la secuencia continúa
+   en el paso de re-entrada de D9 (leer `state.json`).
+
+### 1. Secuencia de re-entrada (arranque de la sesión)
 
 Antes de invocar a ningún subagente, el orquestador reconstruye el contexto
 sin depender de la memoria de sesiones anteriores (D9,
 `core/orchestration/session-protocol.md`):
 
+0. **Resolver la raíz del plugin una sola vez:** `echo $CLAUDE_PLUGIN_ROOT` con
+   `Bash` y guardar el valor como `PLUGIN_ROOT` para esta sesión. El orquestador
+   inyecta `PLUGIN_ROOT/core/contracts/{agente}.md` como ruta absoluta en el
+   prompt de cada subagente que spawnea (pasos 2-5), de modo que el subagente no
+   depende de heredar la variable de entorno. Si `$CLAUDE_PLUGIN_ROOT` no
+   resuelve (p. ej. arnés copiado en el repo en vez de instalado como plugin),
+   usar la raíz local `data-eng-harness-v1/` como `PLUGIN_ROOT`.
 1. `Read("state.json")` — leer el índice de bloques/tareas y su `status`.
 2. Identificar la tarea activa (`in_progress`) o, si no hay ninguna, la
    siguiente `pending`.
@@ -71,16 +114,17 @@ sin depender de la memoria de sesiones anteriores (D9,
    `progress.md`.
 5. Verificar el baseline: el repositorio está en un estado consistente, sin
    cambios sin confirmar de una sesión anterior que no cerró correctamente.
-6. Invocar al planificador (paso 1 del workflow) con ese contexto
+6. Invocar al planificador (paso 2 del workflow) con ese contexto
    reconstruido (tarea activa/siguiente, última entrada de `progress.md`,
    resultado de la verificación de baseline).
 
-### 1. Arrancar SIEMPRE por el planificador
+### 2. Arrancar SIEMPRE por el planificador
 
 Invocar al planificador como primer paso obligatorio, sin excepción:
 
 ```
 Agent(subagent_type: "planificador", prompt: "
+  Tu contrato está en {PLUGIN_ROOT}/core/contracts/planificador.md — léelo primero (paso 0).
   Lee state.json y progress.md (secuencia de re-entrada D9), y hard_spec.md.
   Identifica la tarea in_progress o, si no hay ninguna, la siguiente pending.
   Produce o actualiza el contrato JSON de handoff en tasks/. Actualiza
@@ -93,36 +137,39 @@ El planificador puede spawnear al navegador por su cuenta si necesita
 investigación. El orquestador espera a que el planificador devuelva el resumen
 antes de continuar.
 
-### 2. Invocar al implementador
+### 3. Invocar al implementador
 
 Con la ruta del contrato JSON devuelta por el planificador:
 
 ```
 Agent(subagent_type: "implementador", prompt: "
-  Lee el contrato JSON en {ruta_contrato}. Produce todos los artefactos de
+  Tu contrato de rol está en {PLUGIN_ROOT}/core/contracts/implementador.md — léelo primero (paso 0).
+  Lee el contrato JSON de la tarea en {ruta_contrato}. Produce todos los artefactos de
   artifacts.output. Verifica internamente cada acceptance_criterion. Lista
   todos los ficheros creados o modificados.
 ")
 ```
 
-### 3. Invocar al evaluador
+### 4. Invocar al evaluador
 
 Con la ruta del contrato y la lista de artefactos producidos:
 
 ```
 Agent(subagent_type: "evaluador", prompt: "
-  Lee el contrato JSON en {ruta_contrato}. Verifica cada acceptance_criterion
+  Tu contrato de rol está en {PLUGIN_ROOT}/core/contracts/evaluador.md — léelo primero (paso 0).
+  Lee el contrato JSON de la tarea en {ruta_contrato}. Verifica cada acceptance_criterion
   contra los artefactos producidos: {lista_artefactos}. Emite veredicto
   APTO o NO APTO con defectos concretos y rutas exactas.
 ")
 ```
 
-### 4. Cerrar la tarea con el planificador
+### 5. Cerrar la tarea con el planificador
 
 Pasar el veredicto al planificador para que actualice el estado:
 
 ```
 Agent(subagent_type: "planificador", prompt: "
+  Tu contrato está en {PLUGIN_ROOT}/core/contracts/planificador.md — léelo primero (paso 0).
   El evaluador ha emitido veredicto {APTO|NO APTO} para la tarea {task_id}.
   Defectos: {lista_defectos_si_los_hay}.
   Actualiza el contrato JSON en {ruta_contrato} (status: complete/failed).
@@ -133,17 +180,17 @@ Agent(subagent_type: "planificador", prompt: "
 ")
 ```
 
-### 5. Secuencia de cierre de sesión (D9)
+### 6. Secuencia de cierre de sesión (D9)
 
-Tras el paso 4, el orquestador ejecuta la secuencia de cierre de
+Tras el paso 5, el orquestador ejecuta la secuencia de cierre de
 `core/orchestration/session-protocol.md`:
 
-1. **Veredicto del evaluador** ya disponible (paso 3).
+1. **Veredicto del evaluador** ya disponible (paso 4).
 2. **Commit solo si `APTO`.** Si el veredicto es `NO APTO`, no se confirma
    ningún cambio en el repositorio; la tarea permanece `in_progress` para la
-   siguiente sesión, con los defectos anotados en `progress.md` (paso 4).
+   siguiente sesión, con los defectos anotados en `progress.md` (paso 5).
 3. **Estado actualizado**: `state.json` y `progress.md` ya actualizados por
-   el planificador en el paso 4.
+   el planificador en el paso 5.
 4. **Checkpoint humano**: presentar al usuario, como mínimo:
    - el veredicto del evaluador (APTO/NO APTO + defectos si los hay);
    - el diff/artefactos producidos en la sesión;
@@ -153,7 +200,7 @@ Tras el paso 4, el orquestador ejecuta la secuencia de cierre de
    checkpoint" más abajo).
 
 Si el veredicto fue `NO APTO` y quedan reintentos (máx. 2), el checkpoint
-ofrece al usuario la opción de relanzar el implementador (paso 2) con los
+ofrece al usuario la opción de relanzar el implementador (paso 3) con los
 defectos como contexto adicional **dentro de la misma sesión**, antes de
 llegar al cierre. Si es el segundo intento fallido, se activa
 `fallback.on_blocked: escalate_to_human` y se detiene hasta instrucción
@@ -169,8 +216,8 @@ explícita del usuario.
   varias tareas en la misma ventana de contexto.
 - El estado persiste en `state.json` (índice de estado), `progress.md` (notas
   de sesión) y `tasks/*.json` (contratos); si la sesión se interrumpe, la
-  siguiente sesión arranca con la secuencia de re-entrada (paso 0) leyendo
-  esos ficheros para retomar.
+  siguiente sesión arranca con el bootstrap (paso 0, D14) y la secuencia de
+  re-entrada (paso 1) leyendo esos ficheros para retomar.
 
 ## Contrato de checkpoint (cierre de sesión, D9)
 
@@ -203,5 +250,6 @@ sesión", D9).
 | `core/orchestration/session-protocol.md` | Definición model-agnostic del protocolo de sesión (D9): re-entrada, ciclo, cierre, checkpoint |
 | `core/state-templates/state.json` | Plantilla de `state.json` (D10) |
 | `core/state-templates/progress.md` | Plantilla de `progress.md` y formato de entrada (D10) |
+| `project-template/` | Plantilla de proyecto (D10); origen de la copia del paso 0 de bootstrap (D14) hacia el proyecto del usuario |
 | `core/contracts/*.md` | Contratos de cada agente (entradas, salidas, criterios) |
 | `adapters/claude-code/agents/*.md` | Definiciones ejecutables de los subagentes en Claude Code |

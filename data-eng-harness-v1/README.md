@@ -15,7 +15,10 @@ Cada tarea sigue un ciclo estructurado: el **planificador** decide qué hacer y 
 ## Estructura
 
 ```
-data-eng-harness-v1/
+data-eng-harness-v1/               # Raíz del plugin (${CLAUDE_PLUGIN_ROOT}). Autocontenido.
+│
+├── .claude-plugin/                # Plugin manifest (plugin.json) + marketplace local. plugin.json
+│                                  #   apunta agents/skills a adapters/claude-code/ y deja la raíz aquí.
 │
 ├── core/                          # Runtime portable, model-agnostic. No modificar por proyecto.
 │   ├── orchestration/             # Ciclo de 4 agentes (cycle.md) y condiciones de parada
@@ -27,8 +30,7 @@ data-eng-harness-v1/
 ├── adapters/
 │   └── claude-code/               # Capa vendor-specific para Claude Code. Sustituible (O3).
 │       ├── agents/                # Los 4 agentes como subagentes Claude Code
-│       ├── skills/harness/        # Skill del ciclo completo (trigger + 5 pasos)
-│       └── .claude-plugin/        # Plugin manifest (plugin.json, marketplace.json)
+│       └── skills/harness/        # Skill del ciclo completo (trigger + 5 pasos)
 │
 ├── project-template/              # Plantilla base para cada nuevo proyecto de datos.
 │   ├── CLAUDE.md                  # Índice del proyecto (~80-100 líneas)
@@ -56,7 +58,7 @@ data-eng-harness-v1/
 
 ### Vía recomendada: instalación remota desde Bitbucket (`/plugin marketplace add`)
 
-El repositorio Bitbucket del equipo (`https://bitbucket.org/the-cocktail/data-eng-harness-central.git`) expone un marketplace en su raíz (`.claude-plugin/marketplace.json`) que apunta, vía `git-subdir`, al adaptador Claude Code de este arnés (`data-eng-harness-v1/adapters/claude-code/`). Para instalarlo, ejecutar dentro de Claude Code:
+El repositorio Bitbucket del equipo (`https://bitbucket.org/the-cocktail/data-eng-harness-central.git`) expone un marketplace en su raíz (`.claude-plugin/marketplace.json`) que apunta, vía `git-subdir`, a la raíz del arnés (`data-eng-harness-v1/`) — el plugin completo y autocontenido, con `core/`, `project-template/` y `docs/` incluidos. Para instalarlo, ejecutar dentro de Claude Code:
 
 ```
 /plugin marketplace add https://bitbucket.org/the-cocktail/data-eng-harness-central.git
@@ -69,7 +71,7 @@ Una vez instalado, el comando `inicia el planificador para realizar el proyecto 
 
 ### Vía local (desarrollo/pruebas sobre un checkout del repo)
 
-Si ya se tiene el repo clonado localmente, se puede registrar el marketplace anidado del propio adaptador en lugar del marketplace raíz:
+Si ya se tiene el repo clonado localmente, se puede registrar el marketplace del propio arnés (su raíz, no el adaptador) en lugar del marketplace raíz del repo:
 
 ```bash
 git clone https://bitbucket.org/the-cocktail/data-eng-harness-central.git
@@ -77,17 +79,17 @@ cd data-eng-harness
 ```
 
 ```
-/plugin marketplace add ./data-eng-harness-v1/adapters/claude-code
+/plugin marketplace add ./data-eng-harness-v1
 /plugin install data-eng-harness-v1@data-eng-harness-v1-marketplace
 ```
 
-Alternativamente, sin marketplace, apuntando Claude Code directamente al directorio del plugin (carga solo para esa sesión, útil en desarrollo):
+Alternativamente, sin marketplace, apuntando Claude Code directamente a la raíz del plugin (carga solo para esa sesión, útil en desarrollo):
 
 ```bash
-claude --plugin-dir data-eng-harness-v1/adapters/claude-code/
+claude --plugin-dir data-eng-harness-v1/
 ```
 
-O añadir la ruta `adapters/claude-code/` como plugin en la configuración del proyecto de Claude Code (`settings.json` o equivalente).
+O añadir la ruta `data-eng-harness-v1/` como plugin en la configuración del proyecto de Claude Code (`settings.json` o equivalente). En todos los casos la raíz del plugin es `data-eng-harness-v1/` (contiene `.claude-plugin/plugin.json`, `core/`, `project-template/` y `docs/`); el adaptador Claude Code vive en `adapters/claude-code/` y el manifest lo referencia con los campos `agents`/`skills`.
 
 ### Compartición dentro de The Cocktail
 

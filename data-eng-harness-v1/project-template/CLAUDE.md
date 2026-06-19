@@ -19,7 +19,7 @@ El stack concreto de este proyecto se declara en `stack-profile.yml` (perfil de 
 D11): dialecto SQL, lint/typecheck de Python, motor de schema/contratos, motor de data
 quality, framework de tests de pipeline y warehouse de pruebas.
 
-El core (`../../core/sensors/`) define **categorías** de sensor parametrizables, no
+El core (`${CLAUDE_PLUGIN_ROOT}/core/sensors/`) define **categorías** de sensor parametrizables, no
 herramientas concretas; `stack-profile.yml` es lo que las instancia para este proyecto.
 Soporte de primera clase del core: Python + SQL + Spark/PySpark con `sqlfluff`
 (dialecto configurable), `ruff` + `mypy` y DuckDB como warehouse local de pruebas — ver
@@ -52,7 +52,7 @@ Ver invariantes y contratos de cada capa en `docs/architecture/data-layers.md`.
 | Leer `docs/quality/slas.md` | Consultar SLAs de freshness y calidad por dataset |
 | Leer `docs/dudas.md` | Revisar preguntas abiertas antes de asumir valores no confirmados |
 | Leer `data-conventions.md` | Consultar naming, contratos de datos y reglas de calidad del proyecto |
-| Leer `../../core/sensors/catalog.md` | Ver qué sensores del arnés cubren cada dimensión de calidad |
+| Leer `${CLAUDE_PLUGIN_ROOT}/core/sensors/catalog.md` | Ver qué sensores del arnés cubren cada dimensión de calidad |
 
 ---
 
@@ -68,16 +68,21 @@ Ver invariantes y contratos de cada capa en `docs/architecture/data-layers.md`.
 | Perfil de stack (categorías D11 instanciadas) | `stack-profile.yml` |
 | Stack confirmado | `docs/references/stack.md` |
 | Preguntas abiertas | `docs/dudas.md` |
-| Contratos de agente (core) | `../../core/contracts/` |
-| Sensores de calidad (core) | `../../core/sensors/` |
-| Plantillas de estado (core) | `../../core/state-templates/` |
+| Contratos de agente (core) | `${CLAUDE_PLUGIN_ROOT}/core/contracts/` |
+| Sensores de calidad (core) | `${CLAUDE_PLUGIN_ROOT}/core/sensors/` |
+| Plantillas de estado (core) | `${CLAUDE_PLUGIN_ROOT}/core/state-templates/` |
 
 ---
 
 ## Frontera core / proyecto
 
-El directorio `../../core/` contiene el runtime portable del arnés: contratos de agente,
+El directorio `${CLAUDE_PLUGIN_ROOT}/core/` contiene el runtime portable del arnés: contratos de agente,
 sensores de calidad, plantillas de estado y el protocolo de orquestación.
+
+> `${CLAUDE_PLUGIN_ROOT}` es la raíz del plugin del arnés instalado (la carpeta `data-eng-harness-v1/`
+> que Claude Code cachea al hacer `/plugin install`). El agente la resuelve en runtime; no es una
+> ruta dentro de este proyecto. Si el arnés se ha copiado/vendorizado en el repo en vez de instalado
+> como plugin, sustituir mentalmente `${CLAUDE_PLUGIN_ROOT}` por la ruta a esa carpeta `data-eng-harness-v1/`.
 
 **No se modifica por proyecto.** Si necesitas cambiar el comportamiento de un sensor o
 un contrato de agente, abre una duda en `docs/dudas.md` y escala al equipo de plataforma.

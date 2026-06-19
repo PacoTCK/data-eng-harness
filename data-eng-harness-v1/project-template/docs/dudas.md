@@ -41,7 +41,7 @@ herramientas concretas (dbt, Airflow, Snowflake, Great Expectations, etc.) sin c
 el stack real del equipo de ingeniería de datos de The Cocktail.
 
 **Resolución (2026-06-10):** D11 (hard_spec.md §5) confirma que el stack es heterogéneo
-y multi-cloud por cliente. El core (`../../core/sensors/`) define **categorías**
+y multi-cloud por cliente. El core (`${CLAUDE_PLUGIN_ROOT}/core/sensors/`) define **categorías**
 parametrizables (lint SQL con dialecto, lint/typecheck Python, validación de
 schema/contratos, freshness/nulls/volumetría, tests de pipeline) con Python + SQL +
 Spark/PySpark, `sqlfluff`, `ruff` + `mypy` y DuckDB como implementaciones de referencia.

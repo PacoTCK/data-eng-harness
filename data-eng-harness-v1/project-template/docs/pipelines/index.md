@@ -25,7 +25,7 @@
 
 > Nota: `SLA (hours)` es el tiempo máximo entre la disponibilidad del dato en origen
 > y su disponibilidad en destino. Coherente con el campo `sla_hours` del contrato de datos
-> y con el sensor FF-02 (Data Quality / Freshness) de `../../../core/sensors/`.
+> y con el sensor FF-02 (Data Quality / Freshness) de `${CLAUDE_PLUGIN_ROOT}/core/sensors/`.
 
 ---
 
