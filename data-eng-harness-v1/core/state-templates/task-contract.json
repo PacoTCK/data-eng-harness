@@ -7,7 +7,7 @@
       "planificador": "Rellena TODO el contrato inicial al crearlo: task_id, workflow_id, parent_block, created, title, purpose, context, acceptance_criteria, artifacts, fallback. Inicializa status=pending, audit_trail=[], pre_handoff_validation con todos los campos en false, y execution_summary vacío/con placeholders.",
       "implementador": "Al recibir el contrato, confirma pre_handoff_validation marcando cada campo true. Solo procede si ready_to_proceed=true. Añade entrada al audit_trail al comenzar y al terminar. Al terminar, escribe SOLO el bloque execution_summary (qué hizo, decisiones y su porqué, desviaciones respecto al plan, artefactos realmente producidos). No modifica purpose, context, acceptance_criteria, artifacts.output ni status.",
       "evaluador": "Lee acceptance_criteria + execution_summary como entrada (en vez de recibir una lista verbal de artefactos del orquestador). Añade entrada al audit_trail con el veredicto. No modifica ningún otro campo, incluido execution_summary.",
-      "orquestador": "Actualiza status al invocar al implementador (in_progress). Tras recibir el veredicto del evaluador, el planificador (o el orquestador, según el reparto vigente) escribe SOLO el campo status (complete o failed). No transmite verbalmente la lista de artefactos producidos: esa información vive en execution_summary."
+      "orquestador": "Actualiza status al invocar al implementador (in_progress). Tras recibir el veredicto del evaluador, el planificador (o el orquestador, según el reparto vigente) escribe SOLO el campo status (complete o failed). No transmite verbalmente la lista de artefactos producidos: esa información vive en execution_summary. ADEMÁS (D16): es el ÚNICO agente que rellena resource_usage — tras cada invocación de subagente añade una entrada a resource_usage.by_agent con los datos del bloque <usage> devuelto (tokens, tool_uses, duration_seconds) y recalcula resource_usage.task_total. Los subagentes no escriben este bloque: no pueden medir su propio consumo."
     }
   },
 
@@ -73,6 +73,15 @@
     "artifacts_produced": [
       "{Ruta exacta de cada artefacto realmente producido o modificado. Puede diferir de artifacts.output si surgieron necesidades no previstas en el contrato original — en ese caso, explicar la diferencia en deviations_from_plan.}"
     ]
+  },
+
+  "resource_usage": {
+    "_instructions": "Telemetría de coste del ciclo (D16, resuelve parcialmente R5; materia prima del tuning loop P10). La rellena EXCLUSIVAMENTE el orquestador, que es el único agente que recibe el bloque de uso (<usage>) de cada invocación de subagente; los subagentes no pueden medir su propio consumo y NO escriben aquí. El planificador inicializa by_agent=[] y task_total a cero al crear el contrato. by_agent es append-only: una entrada por invocación de subagente (incluidos los reintentos tras NO APTO, que añaden entradas nuevas con invocation incrementado, no sobrescriben). task_total es el agregado que el orquestador recalcula tras cada entrada. duration_seconds es el tiempo de pared (wall-clock) de la invocación, en segundos enteros. El consumo del propio orquestador (hilo principal) no se contabiliza por entrada: es coste de sesión, no de invocación.",
+    "_agent_values": "planificador | navegador | implementador | evaluador",
+    "by_agent": [
+      {"agent": "{rol del subagente invocado}", "invocation": 1, "tokens": 0, "tool_uses": 0, "duration_seconds": 0}
+    ],
+    "task_total": {"invocations": 0, "tokens": 0, "tool_uses": 0, "duration_seconds": 0}
   },
 
   "fallback": {

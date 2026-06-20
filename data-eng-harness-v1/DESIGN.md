@@ -149,6 +149,17 @@ Cuatro mecanismos mecánicos impiden que el implementador declare la tarea compl
 
 Principios: **P4** (una tarea por iteración, estado persistido), **P5** (reset sin perder estado), **P14** (Structured Contract con payload explícito, audit trail, fallback). Decisión: **D7** (Structured Contract vs Shared Blackboard vs Direct Message Passing).
 
+### 3.7 Telemetría de uso del ciclo (`resource_usage`, D16)
+
+El bloque `resource_usage` del contrato captura el **coste** de cada iteración del ciclo de 4 agentes: cuántos `tokens`, cuántos `tool_uses` y cuánto tiempo (`duration_seconds`, wall-clock) consume cada invocación de subagente, más el agregado de la tarea. Estructura:
+
+- `by_agent` — array **append-only**, una entrada por invocación de subagente (`planificador` | `navegador` | `implementador` | `evaluador`), con `agent`, `invocation` (contador secuencial), `tokens`, `tool_uses` y `duration_seconds`. Un reintento tras `NO APTO` añade una entrada nueva, no sobrescribe — el histórico de coste es inmutable, como el `audit_trail`.
+- `task_total` — agregado (`invocations`, `tokens`, `tool_uses`, `duration_seconds`) recalculado tras cada entrada: el coste total de la tarea.
+
+Lo rellena **exclusivamente el orquestador**, único agente que recibe el bloque de uso (`<usage>`) al término de cada invocación; un subagente no puede medir su propio consumo. El consumo del propio orquestador es coste de sesión, no de invocación, y no se contabiliza por entrada. El coste se registra dentro del mismo contrato estructurado (P14), no en un fichero de telemetría aparte (O4, repo-local truth).
+
+Es la materia prima del *tuning loop* (P10) y resuelve parcialmente R5 (coste/observabilidad de runs). Protocolo completo en `core/state-templates/handoff-protocol.md` §3.3. Principios: **P10** (evals/tuning loop), **P14** (coste en el contrato). Decisión: **D16**.
+
 ---
 
 ## 4. Adaptador Claude Code (adapters/claude-code/)
@@ -444,7 +455,7 @@ Objetivo: **O2** (portabilidad: un único artefacto instalable/clonable), **O3**
 
 ---
 
-## 9. Decisiones de diseño D1-D13
+## 9. Decisiones de diseño
 
 Esta sección registra las decisiones de diseño del arnés con sus justificaciones en los principios P1-P14 y los objetivos O1-O5. Es el punto de referencia para evaluar propuestas de cambio: cualquier modificación que contradiga una decisión de diseño debe explicitar por qué el principio subyacente ya no aplica.
 
@@ -463,6 +474,7 @@ Esta sección registra las decisiones de diseño del arnés con sus justificacio
 | D11 | Perfil de stack por proyecto: el core define categorías de sensor parametrizables (lint SQL, lint/typecheck Python, validación de schema/contratos, freshness/nulls/volumetría, tests de pipeline) en lugar de codificar herramientas concretas para el abanico multi-cloud de los clientes de The Cocktail. Cada proyecto instancia las categorías mediante un perfil de stack. Python + SQL + Spark/PySpark, `sqlfluff`, `ruff` + `mypy` y DuckDB son el soporte de referencia de primera clase. | P1, P11 | `core/sensors/catalog.md`, `project-template/stack-profile.yml` |
 | D12 | Dos políticas de checkpoint que instancian el parámetro de D9: `validacion-por-tarea` (por defecto en v1, checkpoint humano al final de cada tarea, cierre con `/clear`) y `full-auto` (encadena tareas sin checkpoint humano intermedio). Los checkpoints duros (operaciones DDL/DML destructivas o sobre sistemas de cliente, y modificaciones de `hard_spec.md`) son un invariante del protocolo de sesión, no delegable en ninguna política. | D9, P13 | `core/orchestration/` |
 | D13 | El evaluador no modifica artefactos del implementador, pero EJECUTA: corre pipelines, lanza queries contra el entorno de pruebas, ejecuta tests y sensores fast-feedback (FF-01 a FF-04), y basa su veredicto en resultados de ejecución, no solo en lectura de código/SQL. El contrato de tarea es bidireccional: el implementador anexa `execution_summary` que el evaluador lee como entrada de contexto, sin sustituir la verificación directa. | P6, P9, P5 | `core/contracts/evaluador.md`, `core/sensors/catalog.md`, `core/sensors/fast-feedback/*.md`, `adapters/claude-code/agents/evaluador.md`, `core/state-templates/task-contract.json` |
+| D16 | Telemetría de uso por agente en el contrato: bloque `resource_usage` con `tokens`, `tool_uses` y `duration_seconds` (wall-clock, segundos) por invocación de subagente (`by_agent`, append-only) y agregado de tarea (`task_total`). Lo rellena exclusivamente el orquestador (único que recibe el `<usage>` de cada invocación). Resuelve parcialmente R5: coste/observabilidad como materia prima del tuning loop. | P10, P14, D1, O5 | `core/state-templates/task-contract.json`, `core/state-templates/handoff-protocol.md` (§3.3), `core/contracts/orchestrator.md` |
 
 ### 9.1 Justificación de D9 y D10
 

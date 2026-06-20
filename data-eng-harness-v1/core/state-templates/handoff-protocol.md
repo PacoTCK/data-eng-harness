@@ -111,6 +111,25 @@ result     — resultado observable: estado resultante, veredicto, o descripció
 
 El audit trail es la única fuente de verdad sobre el historial del contrato que sobrevive a cualquier context reset. Si se permite modificarlo, el historial puede falsificarse inadvertidamente al retomar el trabajo en una nueva sesión. La inmutabilidad garantiza que el humano puede auditar el ciclo completo sin depender de la memoria de ningún agente.
 
+### 3.3 Protocolo de telemetría de uso (`resource_usage`, D16)
+
+El bloque `resource_usage` del contrato captura el **coste** de cada iteración del ciclo de 4 agentes: cuántos tokens, cuántos usos de herramienta y cuánto tiempo consume cada invocación de subagente, y el total agregado de la tarea. Es la materia prima del *tuning loop* (P10) y la evidencia que permite al humano auditar el coste real de un bloque (resuelve parcialmente R5).
+
+Estructura:
+
+- `by_agent` — array **append-only**, una entrada por **invocación** de subagente, con: `agent` (`planificador` | `navegador` | `implementador` | `evaluador`), `invocation` (contador secuencial por agente), `tokens`, `tool_uses` y `duration_seconds` (tiempo de pared de la invocación, en segundos enteros).
+- `task_total` — agregado (`invocations`, `tokens`, `tool_uses`, `duration_seconds`) que se recalcula tras cada entrada nueva.
+
+Reglas:
+
+1. **Lo rellena exclusivamente el orquestador.** Es el único agente que recibe el bloque de uso (`<usage>`) al término de cada invocación de subagente; un subagente no puede medir su propio consumo y no escribe nunca en este bloque.
+2. **El planificador inicializa el bloque vacío** al crear el contrato: `by_agent: []` y `task_total` con todos los campos a cero. (La plantilla incluye una entrada de ejemplo con placeholders que el planificador sustituye por un array vacío.)
+3. **Una entrada por invocación, append-only.** Cada vez que el orquestador invoca a un subagente, añade una entrada al final de `by_agent`. Un reintento tras `NO APTO` genera una entrada **nueva** (con `invocation` incrementado para ese agente), nunca sobrescribe la anterior — igual que el audit trail, el histórico de coste es inmutable.
+4. **`task_total` se recalcula tras cada entrada.** El orquestador suma todas las entradas de `by_agent`; `invocations` es el número de entradas.
+5. **El consumo del propio orquestador no se contabiliza por entrada.** El orquestador es el hilo principal de la sesión: su coste es coste de sesión, no de una invocación discreta.
+
+> Nota: `resource_usage` registra el coste *dentro* del mismo contrato estructurado (P14), no en un fichero de telemetría aparte. Coherente con O4 (repo-local truth): el coste de cada tarea es auditable desde el propio JSON, sin herramientas externas.
+
 ---
 
 ## 4. Cuándo reset vs compaction (P5)
@@ -231,14 +250,14 @@ Cada condición de fallback del contrato tiene un protocolo de activación. Este
 
 ## 7. Resumen de responsabilidades por agente
 
-| Agente          | Crea contrato | Confirma pre-handoff | Escribe audit trail       | Escribe `execution_summary` | Lee `execution_summary` | Actualiza status        | Marca tarea `complete` en `state.json` |
-|-----------------|:-------------:|:--------------------:|:-------------------------:|:----------------------------:|:------------------------:|:-----------------------:|:---------------------------------------:|
-| orquestador     | —             | —                    | Al invocar implementador  | —                             | —                        | pending → in_progress   | —                        |
-| planificador    | Sí            | —                    | Al crear; al cerrar       | —                             | —                        | in_progress → complete/failed | Sí                  |
-| navegador       | —             | —                    | —                         | —                             | —                        | —                       | —                        |
-| implementador   | —             | Sí                   | Al validar; al producir   | Sí (al terminar)              | —                        | —                       | —                        |
-| evaluador       | —             | Sí                   | Al emitir veredicto       | —                             | Sí (como entrada, junto a `acceptance_criteria`) | — | —                        |
-| humano          | —             | —                    | Al intervenir (escaladas) | —                             | —                        | —                       | —                        |
+| Agente          | Crea contrato | Confirma pre-handoff | Escribe audit trail       | Escribe `execution_summary` | Lee `execution_summary` | Escribe `resource_usage` | Actualiza status        | Marca tarea `complete` en `state.json` |
+|-----------------|:-------------:|:--------------------:|:-------------------------:|:----------------------------:|:------------------------:|:------------------------:|:-----------------------:|:---------------------------------------:|
+| orquestador     | —             | —                    | Al invocar implementador  | —                             | —                        | Sí (tras cada invocación) | pending → in_progress   | —                        |
+| planificador    | Sí            | —                    | Al crear; al cerrar       | —                             | —                        | Inicializa vacío (al crear) | in_progress → complete/failed | Sí            |
+| navegador       | —             | —                    | —                         | —                             | —                        | —                        | —                       | —                        |
+| implementador   | —             | Sí                   | Al validar; al producir   | Sí (al terminar)              | —                        | —                        | —                       | —                        |
+| evaluador       | —             | Sí                   | Al emitir veredicto       | —                             | Sí (como entrada, junto a `acceptance_criteria`) | — | — | —                        |
+| humano          | —             | —                    | Al intervenir (escaladas) | —                             | —                        | —                        | —                       | —                        |
 
 > Nota: el handoff implementador → evaluador es bidireccional vía el contrato (sección 1.1): el
 > implementador escribe `execution_summary` y el evaluador lo lee directamente del JSON, sin

@@ -16,6 +16,9 @@
 - Invocación al implementador (con ruta del contrato JSON)
 - Invocación al evaluador (con ruta del contrato + lista de artefactos producidos)
 - Invocación al planificador para cierre (con veredicto del evaluador)
+- Tras cada invocación de subagente: una entrada en `resource_usage.by_agent` del contrato con los
+  datos del bloque `<usage>` devuelto (`tokens`, `tool_uses`, `duration_seconds`) y `task_total`
+  recalculado (D16; ver "Telemetría de uso" más abajo)
 - Al cierre de sesión: commit (solo si `APTO`, "una tarea verificada = un commit", D13(a)),
   `state.json` y `progress.md` actualizados, checkpoint según la política activa (D12:
   `validacion-por-tarea` o `full-auto`)
@@ -135,6 +138,22 @@ procedimiento:
   ```
 - **Append-only.** Como cualquier otra entrada, una vez escrita por el orquestador no se
   modifica; corresponde a las mismas reglas de la sección 3.1 de `handoff-protocol.md`.
+
+## Telemetría de uso (`resource_usage`, D16)
+
+El orquestador es el **único agente que rellena** el bloque `resource_usage` del contrato, porque es
+el único que recibe el bloque de uso (`<usage>`) al término de cada invocación de subagente; un
+subagente no puede medir su propio consumo.
+
+- **Tras cada invocación** de `planificador`, `navegador`, `implementador` o `evaluador`, el
+  orquestador añade una entrada a `resource_usage.by_agent` con `agent`, `invocation` (contador
+  secuencial para ese agente), `tokens`, `tool_uses` y `duration_seconds` (tiempo de pared, segundos
+  enteros), y recalcula `resource_usage.task_total`.
+- **Append-only.** Un reintento tras `NO APTO` añade una entrada nueva (con `invocation` incrementado),
+  no sobrescribe la anterior — el histórico de coste es inmutable, como el `audit_trail`.
+- **El consumo del propio orquestador no se contabiliza por entrada:** es coste de sesión, no de una
+  invocación discreta.
+- Detalle del protocolo en `core/state-templates/handoff-protocol.md` §3.3.
 
 ## Restricciones
 - El orquestador NO implementa ni evalúa directamente.
