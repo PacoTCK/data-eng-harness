@@ -22,6 +22,24 @@
 - `progress.md` con una nueva entrada de sesión (append-only)
 - Resumen de `acceptance_criteria` y `artifacts.output` para el orquestador
 
+## Estimación del presupuesto `R` (D17, enmienda 2026-06-22)
+
+El bloque `governance.R` **no tiene valores por defecto**: el planificador estima cada cota
+(`tokens`, `invocations`, `retries`) al crear el contrato. Copiar un número fijo es un anti-patrón —el
+consumo real de tareas pasadas ha oscilado en un rango amplio (~100K–237K tokens) y un techo fijo
+produce cotas empíricamente erróneas—. La estimación se ancla, en este orden:
+
+1. **Ancla histórica (P10).** Buscar tareas cerradas comparables (mismo perfil: mecánica vs.
+   interpretativa, monofichero vs. multifichero, con/sin navegador) y tomar su
+   `resource_usage.task_total` como base, más un margen.
+2. **Forma de la tarea.** Nº de ficheros a tocar, si requiere investigación (el navegador suma
+   invocaciones y tokens) y reintentos esperados.
+3. **Cota superior por conservación.** Σ(`R.tokens` de las tareas del bloque) ≤ presupuesto del bloque
+   padre en `state.json`.
+
+Un contrato cuyo `R` conserve los placeholders `{ESTIMACIÓN_*}` sin sustituir —o un valor copiado de un
+default— es inválido y el evaluador puede rechazarlo.
+
 ## Criterio de "done"
 El planificador completa su turno cuando:
 - Ha producido o actualizado el contrato JSON con `status` correcto.

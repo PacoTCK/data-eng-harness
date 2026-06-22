@@ -46,7 +46,7 @@ contrato. La lógica del bucle vive en el orquestador, no aquí.
    - `title`, `purpose`, `context` (con `spec_reference` y `current_state`)
    - `acceptance_criteria` (verbatim del hard_spec o refinados con el brief)
    - `artifacts.input` y `artifacts.output`
-   - `governance` con `R` (presupuesto `tokens`/`invocations`/`retries`), `T` (`ttl_sessions`/`deadline`) y `termination_conditions` (D17). Verificar la **conservación**: Σ(`R.tokens` de las tareas del bloque) ≤ `R.tokens` del bloque en `state.json`.
+   - `governance` con `R` (presupuesto `tokens`/`invocations`/`retries` — **estimado, sin defaults**: ancla histórica en `resource_usage` de tareas comparables + forma de la tarea + conservación; ver `core/contracts/planificador.md` §"Estimación del presupuesto R"), `T` (`ttl_sessions`/`deadline`) y `termination_conditions` (D17). Sustituir los placeholders `{ESTIMACIÓN_*}` de `R` por las cifras estimadas. Verificar la **conservación**: Σ(`R.tokens` de las tareas del bloque) ≤ `R.tokens` del bloque en `state.json`.
    - `fallback` con `on_unclear_requirements`, `on_blocked` y `on_low_confidence`
 6. Actualizar `state.json`: marcar el campo `status` de la tarea (y, si corresponde, del bloque) como `active`, y fijar el presupuesto `R` del bloque si aún no está.
 7. Devolver al orquestador la ruta del JSON y el resumen de criterios. La actualización de `progress.md` con la entrada de cierre se hace en el procedimiento de cierre de sesión, no aquí.
