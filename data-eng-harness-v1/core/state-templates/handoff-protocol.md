@@ -30,7 +30,7 @@ El contrato de tarea **no es unidireccional** (planificador → implementador). 
 
 ```
 planificador → [contrato con purpose/context/acceptance_criteria/artifacts/fallback]
-   → orquestador invoca al implementador (status → in_progress)
+   → orquestador invoca al implementador (status → active)
       → implementador produce los artefactos de artifacts.output
       → implementador ANEXA al mismo JSON el bloque execution_summary
         (qué se hizo, decisiones y su porqué, desviaciones respecto al plan,
@@ -66,7 +66,7 @@ El bloque `pre_handoff_validation` del contrato es la firma del receptor. Su pro
 
 ### 2.1 Qué hace el receptor al recibir un contrato
 
-1. **Leer el contrato completo.** Verificar que `status` es `in_progress` (el orquestador lo actualiza antes de invocar al implementador).
+1. **Leer el contrato completo.** Verificar que `status` es `active` (el orquestador lo actualiza antes de invocar al implementador).
 2. **Revisar `pre_handoff_validation`.** Para cada campo:
    - `context_understood` — ¿el `purpose` y el `context.current_state` son suficientes para actuar sin suposiciones adicionales?
    - `input_artifacts_accessible` — ¿todos los ficheros de `artifacts.input` existen y son legibles?
@@ -101,11 +101,11 @@ result     — resultado observable: estado resultante, veredicto, o descripció
 
 - **Append-only sin excepciones.** Una vez escrita, una entrada no se modifica. Si hay un error, se añade una nueva entrada de corrección: `action: "Corrección de entrada #N: {descripción}"`.
 - **Una entrada por acción significativa.** No agregar múltiples acciones en una misma entrada.
-- **El planificador escribe la primera entrada** al crear el contrato (`action: "Contrato creado"`, `result: "status → pending"`).
-- **El orquestador escribe la entrada** al invocar al implementador (`action: "Implementador invocado"`, `result: "status → in_progress"`).
+- **El planificador escribe la primera entrada** al crear el contrato (`action: "Contrato creado"`, `result: "status → drafted"`).
+- **El orquestador escribe la entrada** al invocar al implementador (`action: "Implementador invocado"`, `result: "status → active"`).
 - **El implementador escribe la entrada** al completar los artefactos (`action: "Artefactos producidos"`, `result: lista de ficheros generados`) y, en el mismo turno, rellena el bloque `execution_summary` del contrato (ver sección 1.1) con el detalle completo — la entrada del audit trail es un resumen breve, `execution_summary` es la fuente de verdad detallada.
 - **El evaluador escribe la entrada** al emitir el veredicto (`action: "Veredicto emitido"`, `result: "APTO" o "NO APTO — {resumen de defectos}"`), tras leer `execution_summary` + `acceptance_criteria` como entrada.
-- **El planificador escribe la entrada de cierre** al actualizar `status` (`action: "Status actualizado"`, `result: "status → complete/failed"`).
+- **El planificador escribe la entrada de cierre** al actualizar `status` al estado terminal correcto (`action: "Status actualizado"`, `result: "status → fulfilled"` si APTO; `violated` si se rompió una cota de `governance` o se agotaron los reintentos; ver §3.4 y `_status_semantics` del contrato).
 
 ### 3.2 Por qué el audit trail es inmutable
 
@@ -130,6 +130,26 @@ Reglas:
 
 > Nota: `resource_usage` registra el coste *dentro* del mismo contrato estructurado (P14), no en un fichero de telemetría aparte. Coherente con O4 (repo-local truth): el coste de cada tarea es auditable desde el propio JSON, sin herramientas externas.
 
+### 3.4 Protocolo de gobernanza de recursos (`governance`, D17)
+
+Mientras `resource_usage` (§3.3) *mide* el coste a posteriori, el bloque `governance` lo **acota a priori** (P15). Es la diferencia entre observabilidad y gobernanza: el contrato deja de solo describir cuánto se consumió y pasa a declarar cuánto *puede* consumirse antes de activar la tarea.
+
+**Quién declara qué (ex-ante).** El **planificador**, al crear el contrato, rellena `governance` y no lo vuelve a tocar:
+
+- `R` — presupuesto multidimensional del ciclo completo (`tokens`, `invocations`, `retries`). Es el techo agregado de todas las invocaciones de subagente de la tarea. Es independiente de `artifacts.input`: un input pequeño puede consumir muchos tokens razonando.
+- `T` — cota temporal (`ttl_sessions`, `deadline?`).
+- `termination_conditions` (Ψ) — causas de cierre explícitas, independientes del éxito (presupuesto agotado, expiración, cancelación).
+- `conservation` — referencia al presupuesto del bloque padre en `state.json`: Σ(presupuestos de las tareas del bloque) ≤ presupuesto del bloque. El planificador la verifica al crear el contrato.
+
+**Quién hace cumplir (durante la ejecución).** El **orquestador** —ya único agente que escribe `resource_usage` (§3.3)— extiende esa responsabilidad al enforcement:
+
+1. **Soft enforcement (budget-aware prompting).** Al invocar a un subagente, el orquestador le inyecta en el prompt el presupuesto restante de `R` (`R − task_total`). El subagente se autorregula: produce salida concisa cuando queda poco, explora cuando hay holgura.
+2. **Hard enforcement.** Tras cada invocación, al recalcular `task_total`, el orquestador recalcula `resource_usage.budget_status`: utilización por dimensión (`task_total / R`), `most_constrained` (la dimensión con mayor utilización) y la señal `enforcement`. Mientras todas las dimensiones < 1, `enforcement = soft_warn`. En cuanto alguna alcanza 1, `enforcement = hard_halt`: el orquestador **detiene el ciclo**, marca `status = violated` y escala al humano. No espera a que el subagente "termine bien".
+
+> Asimetría de cumplimiento (D17; ver DESIGN.md §3.7): el consumo de tokens solo se conoce *después* de cada llamada al modelo, no durante. Por eso el enforcement ocurre en los **límites de invocación** (antes/después de cada subagente), no dentro de una generación. Y como los subagentes son efímeros, no se les "sanciona": simplemente se detiene el ciclo, y la rendición de cuentas se atribuye a la estrategia de asignación del orquestador.
+
+**Estado terminal causal.** El enforcement se refleja en el `status`: una cota rota lleva a `violated` (no a un genérico `failed`), una expiración a `expired`, una cancelación humana a `terminated`, y el cumplimiento de `acceptance_criteria` dentro de R y T a `fulfilled`. Cada contrato alcanza exactamente un estado terminal, lo que permite auditar *por qué* terminó.
+
 ---
 
 ## 4. Cuándo reset vs compaction (P5)
@@ -141,7 +161,7 @@ El arnés distingue dos situaciones de gestión de contexto:
 **Cuándo ocurre:** la sesión del orquestador termina (cierre manual, límite de tokens agotado sin recuperación, interrupción externa).
 
 **Qué ocurre con el estado:** el estado del trabajo persiste en:
-- `state.json` — campo de estado de cada bloque/tarea (`pending`/`in_progress`/`complete`/`failed`).
+- `state.json` — campo de estado de cada bloque/tarea (`drafted`/`active`/`fulfilled`/`violated`/`expired`/`terminated`, alineado con el lifecycle del contrato; D17).
 - `progress.md` — última entrada de sesión (qué se hizo, bugs, siguiente paso).
 - `tasks/{bloque}-{slug}.json` — contrato con `status` actualizado y `audit_trail` con todas las entradas escritas hasta el momento.
 - Artefactos producidos — versionados en el repositorio.
@@ -149,7 +169,7 @@ El arnés distingue dos situaciones de gestión de contexto:
 **Cómo retomar el trabajo:** ver la secuencia de re-entrada del protocolo de sesión (D9) en
 `core/orchestration/session-protocol.md`. En resumen:
 1. El nuevo orquestador arranca desde cero (sin memoria de la sesión anterior).
-2. Lee `state.json` para identificar la tarea `in_progress` o, si no hay ninguna, la siguiente `pending`.
+2. Lee `state.json` para identificar la tarea `active` o, si no hay ninguna, la siguiente `drafted`.
 3. Lee la última entrada de `progress.md` para conocer qué se hizo en la sesión anterior.
 4. Lee el contrato JSON de la tarea activa para conocer el `status` exacto y el `audit_trail`.
 5. Lee los artefactos ya producidos que figuren en `audit_trail`.
@@ -169,7 +189,7 @@ El arnés distingue dos situaciones de gestión de contexto:
 
 ### 4.3 Regla de retoma sin ambigüedad
 
-Un orquestador que retoma el trabajo tras un reset no asume qué ocurrió: lee los ficheros de estado. Si `status` es `in_progress` pero no hay entrada de "Artefactos producidos" en el `audit_trail`, el trabajo del implementador no está completo y debe reiniciarse. Si hay entrada de "Artefactos producidos" pero no de "Veredicto emitido", el evaluador no ha actuado y debe invocarse.
+Un orquestador que retoma el trabajo tras un reset no asume qué ocurrió: lee los ficheros de estado. Si `status` es `active` pero no hay entrada de "Artefactos producidos" en el `audit_trail`, el trabajo del implementador no está completo y debe reiniciarse. Si hay entrada de "Artefactos producidos" pero no de "Veredicto emitido", el evaluador no ha actuado y debe invocarse.
 
 ---
 
@@ -179,10 +199,10 @@ La declaración de victoria prematura ocurre cuando un agente (típicamente el i
 
 Las siguientes reglas mecánicas la impiden:
 
-1. **El ciclo no avanza hasta que el evaluador emite `APTO`.** El orquestador no marca `status: complete` ni actualiza el campo de estado de la tarea en `state.json` a `complete` basándose en el reporte del implementador. Solo lo hace tras recibir el veredicto `APTO` del evaluador.
+1. **El ciclo no avanza hasta que el evaluador emite `APTO`.** El orquestador no marca `status: fulfilled` ni actualiza el campo de estado de la tarea en `state.json` a `fulfilled` basándose en el reporte del implementador. Solo lo hace tras recibir el veredicto `APTO` del evaluador.
 2. **El implementador no tiene autoridad para marcar criterios como cumplidos.** El campo `acceptance_criteria` del contrato no se modifica por el implementador; solo el evaluador tiene autoridad para pronunciarse sobre su cumplimiento.
 3. **El evaluador es un agente distinto con contexto separado.** El evaluador no tiene acceso al historial de sesión del implementador. Lee solo el contrato JSON y los artefactos producidos. Esto impide que la confianza del implementador contamine el juicio del evaluador.
-4. **El `audit_trail` como prueba.** Un bloque no puede marcarse como `complete` si el `audit_trail` no contiene una entrada de "Veredicto emitido" con resultado `APTO`. El planificador verifica esta condición antes de actualizar el `status`.
+4. **El `audit_trail` como prueba.** Un bloque no puede marcarse como `fulfilled` si el `audit_trail` no contiene una entrada de "Veredicto emitido" con resultado `APTO`. El planificador verifica esta condición antes de actualizar el `status`.
 5. **Máximo de reintentos explícito.** Si el evaluador emite `NO APTO` dos veces consecutivas para la misma tarea, el orquestador escala al humano antes de un tercer intento. El ciclo no puede iterar indefinidamente sin intervención humana.
 
 ---
@@ -250,10 +270,10 @@ Cada condición de fallback del contrato tiene un protocolo de activación. Este
 
 ## 7. Resumen de responsabilidades por agente
 
-| Agente          | Crea contrato | Confirma pre-handoff | Escribe audit trail       | Escribe `execution_summary` | Lee `execution_summary` | Escribe `resource_usage` | Actualiza status        | Marca tarea `complete` en `state.json` |
+| Agente          | Crea contrato | Confirma pre-handoff | Escribe audit trail       | Escribe `execution_summary` | Lee `execution_summary` | Escribe `resource_usage` + enforcement | Actualiza status        | Marca tarea `fulfilled` en `state.json` |
 |-----------------|:-------------:|:--------------------:|:-------------------------:|:----------------------------:|:------------------------:|:------------------------:|:-----------------------:|:---------------------------------------:|
-| orquestador     | —             | —                    | Al invocar implementador  | —                             | —                        | Sí (tras cada invocación) | pending → in_progress   | —                        |
-| planificador    | Sí            | —                    | Al crear; al cerrar       | —                             | —                        | Inicializa vacío (al crear) | in_progress → complete/failed | Sí            |
+| orquestador     | —             | —                    | Al invocar implementador  | —                             | —                        | Sí (tras cada invocación; hard/soft enforcement de `governance.R`, D17) | drafted → active; → violated si rompe cota   | —                        |
+| planificador    | Sí (incl. `governance`) | —          | Al crear; al cerrar       | —                             | —                        | Inicializa vacío (al crear) | active → fulfilled/violated/expired | Sí            |
 | navegador       | —             | —                    | —                         | —                             | —                        | —                        | —                       | —                        |
 | implementador   | —             | Sí                   | Al validar; al producir   | Sí (al terminar)              | —                        | —                        | —                       | —                        |
 | evaluador       | —             | Sí                   | Al emitir veredicto       | —                             | Sí (como entrada, junto a `acceptance_criteria`) | — | — | —                        |

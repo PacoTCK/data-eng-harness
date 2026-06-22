@@ -94,6 +94,6 @@ Este fichero es la capa vendor-specific: usa herramientas de Claude Code
 <observaciones menores, sugerencias no bloqueantes>
 
 ### Acción recomendada al orquestador
-- Si APTO: cerrar la tarea; el planificador actualiza `state.json` (status: `complete`) y añade la entrada de cierre a `progress.md`.
+- Si APTO: cerrar la tarea; el planificador actualiza `state.json` (status: `fulfilled`) y añade la entrada de cierre a `progress.md`.
 - Si NO APTO: relanzar al implementador con la lista de defectos anterior.
 ```

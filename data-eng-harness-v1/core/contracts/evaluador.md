@@ -27,6 +27,12 @@
 ## Criterio de "done"
 El evaluador completa su turno cuando ha emitido el veredicto con el formato requerido.
 
+> Relación con el lifecycle del contrato (D17): el veredicto del evaluador determina el estado
+> terminal de calidad —`APTO` → `fulfilled`; `NO APTO` con reintentos agotados → `violated`—, pero la
+> **gobernanza de recursos no es competencia del evaluador**. El orquestador puede detener el ciclo y
+> marcar `violated` por presupuesto (`governance.R`) o `expired` por tiempo (`governance.T`) con
+> independencia del veredicto. El evaluador no lee ni escribe `governance` ni `resource_usage`.
+
 ## Criterio de parada
 El evaluador no tiene bucle. Es una invocación puntual: artefactos → veredicto → devuelve al orquestador.
 

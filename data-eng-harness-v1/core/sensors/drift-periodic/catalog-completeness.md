@@ -46,7 +46,7 @@ El sensor emite un bloque `SENSOR FAIL` por cada ítem incompleto. Si el número
 ## Categoría de implementación (D11)
 
 Este sensor cubre catálogo/gobernanza, **fuera de las cinco categorías de sensor de
-D11** (hard_spec.md §5: lint SQL, typecheck/lint Python, validación de schema/contratos,
+D11** (DESIGN.md §9: lint SQL, typecheck/lint Python, validación de schema/contratos,
 freshness/nulls/volumetría, tests de pipeline). El perfil de stack del proyecto
 (`project-template/stack-profile.yml`) no tiene un campo dedicado a catálogo/gobernanza
 — el campo informativo `plataforma_cliente` es la referencia más cercana si el proyecto

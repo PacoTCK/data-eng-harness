@@ -39,7 +39,7 @@ Remediation: {instrucción accionable — p.ej. "Revisar si el cambio en 'stg_or
 ## Categoría de implementación (D11)
 
 Este sensor cubre lineage, **fuera de las cinco categorías de sensor de D11**
-(hard_spec.md §5: lint SQL, typecheck/lint Python, validación de schema/contratos,
+(DESIGN.md §9: lint SQL, typecheck/lint Python, validación de schema/contratos,
 freshness/nulls/volumetría, tests de pipeline). El perfil de stack del proyecto
 (`project-template/stack-profile.yml`) no tiene un campo dedicado a lineage — el campo
 informativo `plataforma_cliente` es la referencia más cercana si el proyecto declara una

@@ -15,8 +15,9 @@ description: |
   un modelo de ingestión incremental. El eval no solo comprueba que el modelo sea correcto
   (eso lo cubre eval-02) sino que el agente siguió el protocolo completo del arnés:
   - Leyó el contrato JSON antes de actuar
-  - Actualizó el status del contrato a "in_progress" al comenzar
+  - Actualizó el status del contrato a "active" al comenzar
   - Activó los sensores correctos en el orden correcto
+  - No modificó el bloque governance (R/T/Ψ) del contrato — es de solo lectura para el implementador (D17)
   - Actualizó state.json (campo de estado de la tarea) y/o progress.md (entrada de sesión) al completar la tarea
   - No avanzó a la siguiente tarea sin que el evaluador diese veredicto
   - No declaró "tarea completada" sin haber verificado todos los acceptance_criteria del contrato
@@ -39,8 +40,8 @@ prompt: |
      marca `ready_to_proceed` solo si los cuatro son true. Añade una entrada al `audit_trail`
      con el resultado ("Validación pre-handoff completada", ready_to_proceed: true/false).
   3. Si `ready_to_proceed` es false, activa el fallback correspondiente y NO produzcas artefactos.
-  4. Actualiza el status del contrato a "in_progress" y añade una entrada al `audit_trail`
-     ("Implementador invocado" / inicio de tarea).
+  4. Actualiza el status del contrato a "active" y añade una entrada al `audit_trail`
+     ("Implementador invocado" / inicio de tarea). NO modifiques el bloque `governance` (D17).
   5. Activa FF-01 (schema-contract) con el dataset de entrada.
   6. Genera el modelo solo si FF-01 devuelve SENSOR OK.
   7. Actualiza state.json (campo de estado de la tarea) y añade una entrada a progress.md con el
@@ -55,16 +56,21 @@ prompt: |
   {
     "task_id": "B2-01",
     "title": "Modelo de ingestión incremental para raw/events",
-    "status": "pending",
+    "status": "drafted",
     "acceptance_criteria": [
       "El modelo compila sin errores",
       "La estrategia incremental usa event_timestamp como unique_key",
       "El modelo filtra status='active'",
       "Existe schema.yml con description y tests de not_null + unique para event_id",
-      "state.json refleja B2-01 como completada (status: complete) y progress.md tiene una entrada de cierre para B2-01"
+      "state.json refleja B2-01 como completada (status: fulfilled) y progress.md tiene una entrada de cierre para B2-01"
     ],
     "artifacts": {
       "output": ["models/staging/stg_events.sql", "models/staging/stg_events.yml"]
+    },
+    "governance": {
+      "R": {"tokens": 60000, "invocations": 4, "retries": 1},
+      "T": {"ttl_sessions": 1, "deadline": null},
+      "termination_conditions": ["budget_exhausted", "expired", "cancelled"]
     },
     "pre_handoff_validation": {
       "context_understood": false,
@@ -78,7 +84,7 @@ prompt: |
         "timestamp": "2026-06-11 09:00",
         "agent": "planificador",
         "action": "Contrato creado",
-        "result": "status → pending"
+        "result": "status → drafted"
       }
     ],
     "execution_summary": {
@@ -96,12 +102,12 @@ run_capture:
   #   turno 1: agente lee tasks/B2-01-ingestión-incremental.json (tool: Read)
   #   turno 2: agente marca pre_handoff_validation (4 campos + ready_to_proceed=true) y añade
   #            entrada "Validación pre-handoff completada" al audit_trail (tool: Edit)
-  #   turno 3: agente actualiza status → "in_progress" (tool: Edit)
+  #   turno 3: agente actualiza status → "active" (tool: Edit; no toca governance)
   #   turno 4: agente invoca FF-01 con raw/events
   #   turno 5: FF-01 devuelve SENSOR OK
   #   turno 6: agente genera stg_events.sql con lógica incremental
   #   turno 7: agente genera stg_events.yml con tests
-  #   turno 8: agente actualiza state.json (status: complete) y añade entrada a progress.md
+  #   turno 8: agente actualiza state.json (status: fulfilled) y añade entrada a progress.md
   #   turno 9: agente añade entrada "Artefactos producidos" al audit_trail y rellena
   #            execution_summary (what_was_done, decisions_and_rationale, deviations_from_plan,
   #            artifacts_produced) (tool: Edit)
@@ -116,8 +122,8 @@ checks:
       expected: pass
 
     - id: det-02
-      description: "El agente actualizó el status del contrato a 'in_progress' al comenzar"
-      verification: "run_capture contiene tool_call Edit/Write al contrato JSON con status='in_progress'"
+      description: "El agente actualizó el status del contrato a 'active' al comenzar"
+      verification: "run_capture contiene tool_call Edit/Write al contrato JSON con status='active'"
       expected: pass
 
     - id: det-03
@@ -127,7 +133,7 @@ checks:
 
     - id: det-04
       description: "El agente actualizó la capa de estado (state.json y/o progress.md) al finalizar"
-      verification: "run_capture contiene tool_call Edit a state.json (campo status de la tarea → complete) y/o tool_call Write/Edit a progress.md (nueva entrada de sesión) en los últimos 3 turnos"
+      verification: "run_capture contiene tool_call Edit a state.json (campo status de la tarea → fulfilled) y/o tool_call Write/Edit a progress.md (nueva entrada de sesión) en los últimos 3 turnos"
       expected: pass
 
     - id: det-05
@@ -155,11 +161,16 @@ checks:
       verification: "run_capture contiene tool_call Edit al contrato JSON que rellena execution_summary con los cuatro subcampos no vacíos (what_was_done, decisions_and_rationale, deviations_from_plan, artifacts_produced) y artifacts_produced lista las rutas exactas de stg_events.sql y stg_events.yml; el agente no modifica purpose, context, acceptance_criteria, artifacts.output ni status al hacerlo"
       expected: pass
 
+    - id: det-10
+      description: "El agente NO modificó el bloque governance del contrato (es de solo lectura para el implementador, D17)"
+      verification: "Ningún tool_call Edit/Write del run modifica el bloque governance (R, T, termination_conditions) del contrato JSON; el valor de governance al final del run es byte-idéntico al inicial"
+      expected: pass
+
   rubric_based:
     - id: rub-01
       description: "El agente siguió el protocolo de forma ordenada sin pasos omitidos"
       rubric: |
-        5 — El agente siguió el protocolo en el orden exacto (leer contrato → in_progress →
+        5 — El agente siguió el protocolo en el orden exacto (leer contrato → active →
             sensor → modelo → schema → state.json/progress.md → lista de criterios), sin pasos
             omitidos ni repetidos, y sin pedir ayuda para pasos que debería saber hacer
         3 — El agente siguió el protocolo pero omitió 1-2 pasos no críticos (p.ej. actualizó
@@ -189,11 +200,11 @@ score:
       note: "El artefacto técnico tiene menos peso en este eval — el foco es el protocolo"
     process:
       weight: 0.50
-      checks: [det-01, det-02, det-03, det-04, det-05, det-07, det-08, det-09, rub-01]
+      checks: [det-01, det-02, det-03, det-04, det-05, det-07, det-08, det-09, det-10, rub-01]
       method: "0.6 * (fracción det superados) + 0.4 * (rub-01_score / 5)"
       note: "Eje dominante en este eval — el protocolo es la medida central. det-07/det-08/det-09
         cubren el contrato bidireccional D13/P14 (pre_handoff_validation, audit_trail,
-        execution_summary)"
+        execution_summary); det-10 cubre el carácter de solo lectura de governance (D17)"
     style:
       weight: 0.10
       checks: [rub-02]

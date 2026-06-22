@@ -174,7 +174,7 @@ Reglas adicionales **propias de este proyecto**:
 
 El stack de datos del equipo es heterogéneo y multi-cloud (varía por cliente); el core
 no fija herramientas concretas, sino **categorías de sensor** parametrizables que cada
-proyecto instancia mediante su **perfil de stack** (D11, hard_spec.md §5).
+proyecto instancia mediante su **perfil de stack** (D11; ver `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` §9).
 
 El perfil de stack de este proyecto se declara en `stack-profile.yml` (raíz del
 proyecto). Cada campo de ese fichero instancia una categoría de sensor de

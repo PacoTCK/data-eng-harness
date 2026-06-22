@@ -1,6 +1,6 @@
 # Protocolo de sesión (D9)
 
-> Definición model-agnostic del protocolo de sesión único (hard_spec.md §3.1.1, D9). Complementa
+> Definición model-agnostic del protocolo de sesión único (D9; ver DESIGN.md §1.1). Complementa
 > `cycle.md` (qué hace el ciclo de 4 agentes dentro de una sesión) y `stop-conditions.md` (cuándo
 > el orquestador para o escala). Este documento define **cuándo empieza y cuándo termina una
 > sesión**, y qué ocurre en esos dos límites. Incluye D13 (git como mecanismo de recuperación del
@@ -52,8 +52,8 @@ de cierre** ("Checkpoint").
      adelanta parcialmente el runner autónomo evolutivo declarado en D9(c).
   2. **Continuación dentro de la misma sesión**, mientras el contexto lo permita (sujeto a la
      compaction de `state-templates/handoff-protocol.md` §4.2).
-  > La elección entre estos dos enfoques **se decide al implementar el Bloque 2** (no se decide en
-  > esta enmienda; ver hard_spec.md D12(2)(i) y R7).
+  > La elección entre estos dos enfoques **se decide al implementar el Bloque 2** (ver el backlog de
+  > decisiones abiertas en DESIGN.md §8.4).
 - **Implicación — checkpoints duros.** `full-auto` sigue sujeto, sin excepción, a los
   **checkpoints duros** definidos más abajo. Ningún encadenamiento automático puede saltarse un
   checkpoint duro.
@@ -72,7 +72,7 @@ incluida `full-auto`:
    `TRUNCATE`, `DELETE` sin `WHERE` acotado, escritura sobre entornos productivos o de cliente).
 2. **Cualquier modificación de `hard_spec.md`** (la memoria casi inmutable del proyecto, ver D10).
 
-> Los checkpoints duros son un invariante del **protocolo de sesión** (D9, §3.1.1), no de la
+> Los checkpoints duros son un invariante del **protocolo de sesión** (D9), no de la
 > política de checkpoint elegida. Ninguna política —ni siquiera `full-auto`— puede degradarlos,
 > automatizarlos ni muestrearlos. Si una tarea implica una operación de este tipo, el orquestador
 > **detiene el bucle automático** (incluso en `full-auto`) y escala al humano antes de continuar,
@@ -111,11 +111,11 @@ memoria de la sesión anterior:
    resolviendo la ruta raíz del plugin en el entorno del agente —bajo la cual cuelgan directamente
    `project-template/` y `core/`— y copiándolos desde ahí; si la detección o la copia fallan, cae al
    `cp -r` manual documentado como fallback en `SETUP.md` §2.2. Ver D14
-   (`hard_spec.md` §5) para el mecanismo completo. Este paso es **idempotente** y **no
+   (DESIGN.md §9) para el mecanismo completo. Este paso es **idempotente** y **no
    sobrescribe**: si la detección encuentra los artefactos ya presentes (con cualquier contenido),
    no hace nada y la secuencia continúa directamente en el paso 1.
 1. **Leer `state.json`** — índice de bloques/tareas y su campo de estado actual.
-2. **Identificar la tarea activa** (`in_progress`) o, si no hay ninguna, **la siguiente `pending`**.
+2. **Identificar la tarea activa** (`active`) o, si no hay ninguna, **la siguiente `drafted`**.
 3. **Leer la última entrada de `progress.md`** — qué se hizo en la sesión anterior, bugs conocidos,
    siguiente paso anotado.
 4. **Inspeccionar el historial de control de versiones** (p. ej. `git log -N` con las últimas N
@@ -127,7 +127,7 @@ memoria de la sesión anterior:
      confirmar que puedan quedar en el working tree.
 5. **Verificar el baseline**: el repositorio está en un estado consistente, sin cambios sin
    confirmar de una sesión anterior que no cerró correctamente. Si los hay y proceden de una tarea
-   `in_progress` con un veredicto `NO APTO` previo, son el punto de partida del reintento (ver
+   `active` con un veredicto `NO APTO` previo, son el punto de partida del reintento (ver
    "Política de reintentos y recuperación con git (D13)" más abajo).
 6. **Invocar al `planificador`** con ese contexto reconstruido (tarea activa/siguiente, última
    entrada de progreso, resultado de la verificación de baseline).
@@ -163,7 +163,7 @@ Una vez completada la re-entrada, el orquestador ejecuta el ciclo de 4 agentes d
    git. El orden es siempre **commit (tras `APTO`) → checkpoint → limpieza de contexto**, nunca al
    revés.
    - Si el veredicto es `NO APTO`, no se confirma ningún cambio en el repositorio: los artefactos
-     producidos quedan en el working tree y la tarea permanece `in_progress` para la siguiente
+     producidos quedan en el working tree y la tarea permanece `active` para la siguiente
      sesión, que reintenta a partir de ellos, con los defectos anotados en el contrato de tarea y
      en `progress.md` (ver "Política de reintentos y recuperación con git (D13)" más abajo).
 3. **Actualización de estado**: el `planificador` actualiza el campo de estado de la tarea (y, si
@@ -183,6 +183,27 @@ Una vez completada la re-entrada, el orquestador ejecuta el ciclo de 4 agentes d
 > Nota model-agnostic: "limpieza de contexto" (p. ej. el comando `/clear` en Claude Code) es un
 > ejemplo de la operación —descartar la ventana de contexto de la sesión actual—, no una API
 > exclusiva de un proveedor. La dependencia de runtime concreta vive en `adapters/`.
+
+---
+
+## Gobernanza de recursos durante la sesión (D17)
+
+A lo largo del ciclo, el orquestador hace cumplir el presupuesto `governance.R`/`T` que el
+planificador declaró en el contrato (protocolo completo en `state-templates/handoff-protocol.md`
+§3.4):
+
+- **Al planificar el bloque**, el planificador fija el presupuesto `R` del bloque en `state.json` y
+  verifica la **ley de conservación**: Σ(`governance.R.tokens` de las tareas del bloque) ≤ `R.tokens`
+  del bloque.
+- **Durante el ciclo**, tras cada invocación de subagente, el orquestador recalcula
+  `resource_usage.budget_status` contra `governance.R`. Si una cota se rompe (`hard_halt`), **detiene
+  el bucle** —igual que ante un checkpoint duro—, marca el contrato `status = violated` y escala al
+  humano, sin esperar al cierre normal de la tarea.
+- **Una expiración de `T`** (superado `ttl_sessions`/`deadline`) lleva el contrato a `expired` y
+  activa el fallback `on_timeout`.
+
+Esto es la contrapartida de gobernanza a la telemetría D16: la sesión no solo *registra* el coste,
+lo *acota* (P15).
 
 ---
 
@@ -217,7 +238,7 @@ recupera el bucle si se rompe.
 
 ## Tag opcional por bloque (checkpoint de rescate, D13(d))
 
-Al completarse un bloque del backlog (todas sus tareas en `complete`), el orquestador **puede**
+Al completarse un bloque del backlog (todas sus tareas en `fulfilled`), el orquestador **puede**
 crear un `tag` de git (p. ej. `bloqueN-complete`) como checkpoint de rescate adicional.
 
 - Es **opcional**, no obligatorio: no sustituye al commit por tarea verificada (D13(a)), que es la

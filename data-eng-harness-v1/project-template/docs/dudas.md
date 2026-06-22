@@ -27,7 +27,7 @@
 
 | ID | Fecha apertura | Bloque | Pregunta / Gap | Responsable | Estado | Fecha resolución | Resolución |
 |----|----------------|--------|----------------|-------------|--------|------------------|------------|
-| D1 | ⟨pendiente⟩ | R1 | ¿Qué stack de datos usa el equipo? (herramienta de transformación, warehouse, calidad) | tech lead / equipo | resuelta | 2026-06-10 | Resuelto a nivel de arnés por D11 (hard_spec.md §5): el stack es heterogéneo por cliente; cada proyecto rellena `stack-profile.yml` con su perfil concreto. Este proyecto debe rellenar `stack-profile.yml` con su propio perfil. |
+| D1 | ⟨pendiente⟩ | R1 | ¿Qué stack de datos usa el equipo? (herramienta de transformación, warehouse, calidad) | tech lead / equipo | resuelta | 2026-06-10 | Resuelto a nivel de arnés por D11 (ver `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` §9): el stack es heterogéneo por cliente; cada proyecto rellena `stack-profile.yml` con su perfil concreto. Este proyecto debe rellenar `stack-profile.yml` con su propio perfil. |
 | D2 | ⟨pendiente⟩ | — | ¿Qué familia de capas adopta el proyecto: landing/staging/marts o bronze/silver/gold? | tech lead | abierta | — | — |
 
 ---
@@ -40,7 +40,7 @@
 herramientas concretas (dbt, Airflow, Snowflake, Great Expectations, etc.) sin conocer
 el stack real del equipo de ingeniería de datos de The Cocktail.
 
-**Resolución (2026-06-10):** D11 (hard_spec.md §5) confirma que el stack es heterogéneo
+**Resolución (2026-06-10):** D11 (ver `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` §9) confirma que el stack es heterogéneo
 y multi-cloud por cliente. El core (`${CLAUDE_PLUGIN_ROOT}/core/sensors/`) define **categorías**
 parametrizables (lint SQL con dialecto, lint/typecheck Python, validación de
 schema/contratos, freshness/nulls/volumetría, tests de pipeline) con Python + SQL +

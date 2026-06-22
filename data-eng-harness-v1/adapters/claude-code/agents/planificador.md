@@ -31,9 +31,10 @@ contrato. La lógica del bucle vive en el orquestador, no aquí.
    responder). También leer el protocolo de sesión (D9) en
    `$CLAUDE_PLUGIN_ROOT/core/orchestration/session-protocol.md`.
 
-1. Leer `state.json` — identificar la tarea `in_progress` o, si no hay ninguna, la siguiente `pending`.
+1. Leer `state.json` — identificar la tarea `active` o, si no hay ninguna, la siguiente `drafted`.
+   - **Si el proyecto aún no tiene `hard_spec.md`** (primera vez), derivarlo del `soft_spec.md` antes de continuar (D18): leer `soft_spec.md`, producir el `hard_spec.md` del proyecto (bloques, `acceptance_criteria`, decisiones de diseño) e inicializar `state.json` con el índice de bloques. Si tampoco hay `soft_spec.md`, escalar al humano para que lo redacte (plantilla en `project-template/soft_spec.md`).
 2. Leer la última entrada de `progress.md` — qué se hizo en la sesión anterior, bugs conocidos, siguiente paso anotado.
-3. Leer la sección correspondiente de `hard_spec.md §4` para esa tarea/bloque.
+3. Leer la sección de bloques del `hard_spec.md` **del proyecto** para esa tarea/bloque.
 4. Si el objetivo de la tarea requiere investigación (corpus de artículos, patrones externos), spawnear al navegador:
    ```
    Agent(subagent_type: "navegador", prompt: "<pregunta específica>")
@@ -41,26 +42,27 @@ contrato. La lógica del bucle vive en el orquestador, no aquí.
    Esperar el brief y usarlo como contexto antes de producir el contrato.
 5. Escribir o actualizar el fichero `tasks/B{N}-{slug}.json` con todos los campos requeridos:
    - `task_id`, `workflow_id`, `parent_block`, `created`, `handoff_type: "planner_to_implementador"`
-   - `status: "in_progress"`
+   - `status: "active"`
    - `title`, `purpose`, `context` (con `spec_reference` y `current_state`)
    - `acceptance_criteria` (verbatim del hard_spec o refinados con el brief)
    - `artifacts.input` y `artifacts.output`
+   - `governance` con `R` (presupuesto `tokens`/`invocations`/`retries`), `T` (`ttl_sessions`/`deadline`) y `termination_conditions` (D17). Verificar la **conservación**: Σ(`R.tokens` de las tareas del bloque) ≤ `R.tokens` del bloque en `state.json`.
    - `fallback` con `on_unclear_requirements`, `on_blocked` y `on_low_confidence`
-6. Actualizar `state.json`: marcar el campo `status` de la tarea (y, si corresponde, del bloque) como `in_progress`.
+6. Actualizar `state.json`: marcar el campo `status` de la tarea (y, si corresponde, del bloque) como `active`, y fijar el presupuesto `R` del bloque si aún no está.
 7. Devolver al orquestador la ruta del JSON y el resumen de criterios. La actualización de `progress.md` con la entrada de cierre se hace en el procedimiento de cierre de sesión, no aquí.
 
 ## Procedimiento al cierre de sesión (recibe veredicto del evaluador, D9)
 
 1. Leer el contrato JSON activo (`tasks/B{N}-{slug}.json`).
-2. Si veredicto es `APTO`:
-   - Actualizar `"status"` del JSON a `"complete"`.
-   - Actualizar `state.json`: marcar el campo `status` de la tarea (y, si corresponde, del bloque) como `complete`.
+2. Si veredicto es `APTO` (y no se rompió ninguna cota de `governance`):
+   - Actualizar `"status"` del JSON a `"fulfilled"`.
+   - Actualizar `state.json`: marcar el campo `status` de la tarea (y, si corresponde, del bloque) como `fulfilled`.
 3. Si veredicto es `NO APTO` y hay reintentos disponibles (máx. 2):
-   - Mantener `"status": "in_progress"` en el JSON y en `state.json`.
+   - Mantener `"status": "active"` en el JSON y en `state.json`.
    - Anotar los defectos del evaluador en el campo `audit_trail` del JSON (o en `notes`).
    - Devolver al orquestador los defectos concretos para que relance al implementador.
-4. Si veredicto es `NO APTO` en el segundo intento:
-   - Actualizar `"status"` del JSON a `"failed"` y `state.json` a `failed`.
+4. Si veredicto es `NO APTO` en el segundo intento (reintentos agotados), o el orquestador señaló `hard_halt` por presupuesto:
+   - Actualizar `"status"` del JSON a `"violated"` y `state.json` a `violated` (o `expired` si la causa fue `governance.T`).
    - Activar `fallback.on_blocked: escalate_to_human`.
 5. Añadir una entrada nueva al final de `progress.md` siguiendo la estructura de `core/state-templates/progress.md` ("Cómo añadir una entrada"): qué se hizo, veredicto del evaluador, bugs/hallazgos, estado tras la sesión y siguiente paso.
 6. Devolver al orquestador el estado resultante para el checkpoint humano (cierre de sesión D9).
@@ -78,7 +80,7 @@ contrato. La lógica del bucle vive en el orquestador, no aquí.
 
 **Bloque activo:** B{N} — {nombre del bloque}
 **Contrato JSON:** tasks/B{N}-{slug}.json
-**Status:** in_progress | complete | failed
+**Status:** drafted | active | fulfilled | violated | expired | terminated
 
 ### Acceptance criteria
 - <criterio 1>

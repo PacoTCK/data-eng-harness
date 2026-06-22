@@ -1,14 +1,14 @@
 # Plantillas de estado
 
-Capa de estado del arnés (D10, hard_spec.md §5): separa la especificación (`hard_spec.md`, qué/por
-qué, casi inmutable) del estado de avance (`state.json`, mutación de alta frecuencia) y de las notas
-de sesión (`progress.md`, append-only).
+Capa de estado del arnés (D10; ver DESIGN.md §9): separa la especificación (el `hard_spec.md` del
+proyecto, qué/por qué, casi inmutable) del estado de avance (`state.json`, mutación de alta
+frecuencia) y de las notas de sesión (`progress.md`, append-only).
 
 ## Inventario
 
 | Fichero                 | Rol                                                                                  | Estado      |
 |--------------------------|--------------------------------------------------------------------------------------|-------------|
-| `state.json`             | Índice de bloques/tareas con su campo de estado (`pending`/`in_progress`/`complete`/`failed`). Única mutación permitida: ese campo. | **Vigente (D10)** |
+| `state.json`             | Índice de bloques/tareas con su campo de estado (`drafted`/`active`/`fulfilled`/`violated`/`expired`/`terminated`, D17) y presupuesto `R` por bloque. Única mutación frecuente: el campo de estado. | **Vigente (D10)** |
 | `progress.md`            | Notas de sesión append-only: qué se hizo, veredicto, bugs, siguiente paso.            | **Vigente (D10)** |
 | `task-contract.json`     | Plantilla de contrato de handoff (Structured Contract, D7/P14) para `tasks/{bloque}-{slug}.json`. | Vigente |
 | `handoff-protocol.md`    | Reglas que rigen el uso de las plantillas anteriores: validación pre-handoff, audit trail, fallback. | Vigente |
@@ -21,8 +21,8 @@ de sesión (`progress.md`, append-only).
 La capa de estado canónica del arnés son **dos ficheros**:
 
 1. **`state.json`** — índice de bloques/tareas con un campo de estado por entrada. Las definiciones,
-   objetivos y criterios de aceptación de cada bloque/tarea viven en `hard_spec.md`; `state.json`
-   solo referencia los IDs.
+   objetivos y criterios de aceptación de cada bloque/tarea viven en el `hard_spec.md` del proyecto;
+   `state.json` solo referencia los IDs.
 2. **`progress.md`** — notas de sesión append-only.
 
 Cualquier proyecto que use este arnés copia `state.json` y `progress.md` a su raíz (o a la carpeta

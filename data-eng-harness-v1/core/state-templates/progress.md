@@ -1,12 +1,12 @@
 # Progress log — {PROYECTO}
 
-> Notas de sesión, append-only (D10, hard_spec.md §5).
+> Notas de sesión, append-only (D10; ver DESIGN.md §9).
 > **Cada sesión añade una entrada nueva al final, nunca reescribe entradas anteriores.**
 > Si una entrada anterior resultó incorrecta, añade una entrada de corrección que la referencie; no la edites ni la borres.
 >
-> Este fichero es la "memoria de trabajo" desechable del arnés (rol de `fix_plan.md`, hard_spec.md §5
-> D10-b): si se pierde o se corrompe, es regenerable inspeccionando `state.json`, `git log` y los
-> contratos en `tasks/`. La especificación estable (qué/por qué) vive en `hard_spec.md`, no aquí.
+> Este fichero es la "memoria de trabajo" desechable del arnés (rol de `fix_plan.md`; ver DESIGN.md
+> §9): si se pierde o se corrompe, es regenerable inspeccionando `state.json`, `git log` y los
+> contratos en `tasks/`. La especificación estable (qué/por qué) vive en el `hard_spec.md` del proyecto, no aquí.
 
 ---
 
@@ -21,7 +21,7 @@ Al cierre de cada sesión (ver protocolo de sesión, `core/orchestration/session
 - **Qué se hizo**: {resumen de lo producido/modificado en esta sesión}
 - **Veredicto del evaluador**: APTO / NO APTO — {resumen de defectos si NO APTO}
 - **Bugs / hallazgos**: {observaciones relevantes para sesiones futuras, o "ninguno"}
-- **Estado tras esta sesión**: {task_id} → {pending|in_progress|complete|failed} en `state.json`
+- **Estado tras esta sesión**: {task_id} → {drafted|active|fulfilled|violated|expired|terminated} en `state.json`
 - **Siguiente paso**: {qué debe hacer la próxima sesión, o "ninguno — bloque cerrado"}
 ```
 

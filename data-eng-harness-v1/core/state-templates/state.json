@@ -1,11 +1,12 @@
 {
   "_template_instructions": {
-    "description": "Plantilla de la capa de estado del arnés (D10, hard_spec.md §5). Copia este fichero a state.json en la raíz del proyecto que use el arnés y rellena el índice de bloques/tareas.",
-    "unica_mutacion_permitida": "El campo 'status' de cada entrada de bloque y de cada entrada de tarea. NINGÚN otro campo de este fichero se edita en el día a día.",
-    "que_NO_va_aqui": "Las definiciones de bloque, sus objetivos, su contenido y sus acceptance_criteria viven en hard_spec.md. Este fichero solo referencia IDs (B0, B2-03, ...) y su status. Ninguna frase debe quedar duplicada entre este fichero y hard_spec.md.",
-    "quien_edita": "El planificador, en cada iteración del ciclo (al crear un contrato → status: pending; al invocarse el implementador vía orquestador → status: in_progress; al recibir veredicto del evaluador → status: complete o failed).",
-    "status_values": "pending | in_progress | complete | failed",
-    "regenerable": "Este fichero es una proyección derivada de hard_spec.md + el estado real del repo (git log). Si se corrompe o se pierde, es regenerable inspeccionando el historial de git y el contenido de tasks/."
+    "description": "Plantilla de la capa de estado del arnés (D10; ver DESIGN.md §3). Copia este fichero a state.json en la raíz del proyecto que use el arnés y rellena el índice de bloques/tareas.",
+    "unica_mutacion_permitida": "El campo 'status' de cada entrada de bloque y de cada entrada de tarea. NINGÚN otro campo de este fichero se edita en el día a día, salvo 'R' por bloque que el planificador fija una vez (presupuesto de conservación, D17).",
+    "que_NO_va_aqui": "Las definiciones de bloque, sus objetivos, su contenido y sus acceptance_criteria viven en el hard_spec.md del proyecto (derivado del soft_spec.md en el setup, D18). Este fichero solo referencia IDs (B0, B2-03, ...), su status y su presupuesto R. Ninguna frase descriptiva debe quedar duplicada entre este fichero y el hard_spec.md del proyecto.",
+    "quien_edita": "El planificador, en cada iteración del ciclo (al crear un contrato → status: drafted; al invocarse el implementador vía orquestador → status: active; al recibir veredicto del evaluador → status: fulfilled, violated o expired). Fija 'R' por bloque al planificar el bloque.",
+    "status_values": "drafted | active | fulfilled | violated | expired | terminated (lifecycle del contrato, D17; alineado con task-contract.json)",
+    "conservation_R": "Cada bloque declara 'R' (presupuesto de recursos del bloque). Ley de conservación (D17): Σ(governance.R.tokens de las tareas del bloque) ≤ blocks[i].R.tokens. El planificador la verifica al crear cada contrato.",
+    "regenerable": "Este fichero es una proyección derivada del hard_spec.md del proyecto + el estado real del repo (git log). Si se corrompe o se pierde, es regenerable inspeccionando el historial de git y el contenido de tasks/."
   },
 
   "workflow_id": "{nombre del workflow, ej: data-eng-harness-v1}",
@@ -15,11 +16,13 @@
   "blocks": [
     {
       "block_id": "{B0}",
-      "status": "pending",
+      "status": "drafted",
+      "R": {"tokens": 0},
+      "_R_doc": "Presupuesto de recursos del bloque (D17). Σ(governance.R.tokens de las tareas de este bloque) no debe exceder R.tokens. El planificador lo fija al planificar el bloque.",
       "tasks": [
         {
           "task_id": "{B0-01}",
-          "status": "pending",
+          "status": "drafted",
           "contract": "tasks/{B0}-{slug}.json"
         }
       ]

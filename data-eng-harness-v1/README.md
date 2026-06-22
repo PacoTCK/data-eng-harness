@@ -30,7 +30,7 @@ data-eng-harness-v1/               # Raíz del plugin (${CLAUDE_PLUGIN_ROOT}). A
 ├── adapters/
 │   └── claude-code/               # Capa vendor-specific para Claude Code. Sustituible (O3).
 │       ├── agents/                # Los 4 agentes como subagentes Claude Code
-│       └── skills/harness/        # Skill del ciclo completo (trigger + 5 pasos)
+│       └── skills/eng-harness/    # Skill del ciclo completo (trigger + 5 pasos)
 │
 ├── project-template/              # Plantilla base para cada nuevo proyecto de datos.
 │   ├── CLAUDE.md                  # Índice del proyecto (~80-100 líneas)
@@ -101,9 +101,14 @@ Para compartir en un nuevo proyecto interno: incluir el repositorio como submód
 
 ## Cómo arrancar el ciclo
 
-### Requisito previo: tener hard_spec.md + la capa de estado (state.json/progress.md) en el repo
+### Requisito previo: el spec del proyecto (`soft_spec.md` → `hard_spec.md`) + la capa de estado
 
-El planificador lee `hard_spec.md` para obtener los objetivos y criterios de cada bloque, y la capa de estado (`state.json` + `progress.md`, D10) para conocer el estado de avance. Si el proyecto aún no tiene estos ficheros, crearlos antes de iniciar el ciclo a partir de las plantillas en `core/state-templates/`.
+El arnés trabaja sobre un **spec del proyecto** en dos niveles (D18):
+
+1. **`soft_spec.md`** — el objetivo del proyecto en lenguaje natural (qué se quiere construir, fuentes, entregables). Lo escribe el humano; el setup lo scaffolda a partir de la plantilla `project-template/soft_spec.md`.
+2. **`hard_spec.md`** — el plan curado que el **planificador deriva del `soft_spec.md`** la primera vez que se ejecuta el ciclo: bloques, criterios de aceptación y decisiones de diseño. Es la memoria casi inmutable del proyecto.
+
+El planificador lee el `hard_spec.md` del proyecto para los objetivos/criterios de cada bloque, y la capa de estado (`state.json` + `progress.md`, D10) para el estado de avance. Si el proyecto aún no tiene `hard_spec.md`, el planificador lo deriva del `soft_spec.md` en la primera sesión. La capa de estado se scaffolda desde las plantillas en `core/state-templates/` (bootstrap D14).
 
 ### Protocolo de sesión (D9): arranque y cierre
 
@@ -111,7 +116,7 @@ El arnés ejecuta **una tarea por sesión**: cada sesión arranca con una secuen
 
 **Al arrancar una sesión** (incluida la primera vez):
 
-1. Leer `state.json` para identificar la tarea activa (`in_progress`) o, si no hay ninguna, la siguiente `pending`.
+1. Leer `state.json` para identificar la tarea activa (`active`) o, si no hay ninguna, la siguiente `drafted`.
 2. Leer la última entrada de `progress.md` (qué se hizo en la sesión anterior, siguiente paso anotado).
 3. Verificar que el repositorio está en un estado consistente (p. ej. `git log` reciente coincide con `state.json`/`progress.md`).
 4. Invocar al planificador con ese contexto.
@@ -134,17 +139,17 @@ inicia el planificador para realizar el proyecto usando agentes
 
 El ciclo de 4 agentes se ejecuta dentro de la sesión:
 
-1. **Planificador** — identifica la tarea activa o siguiente pendiente en `state.json`, produce el contrato JSON en `tasks/`, marca la tarea como `in_progress` en `state.json`.
+1. **Planificador** — identifica la tarea activa o siguiente pendiente en `state.json`, produce el contrato JSON en `tasks/` (incl. `governance` R/T, D17), marca la tarea como `active` en `state.json`.
 2. **Implementador** — lee el contrato JSON, confirma `pre_handoff_validation`, produce los artefactos.
 3. **Evaluador** — verifica los artefactos contra los `acceptance_criteria` del contrato, emite `APTO` o `NO APTO`.
-4. **Planificador (cierre)** — actualiza el contrato a `complete` o `failed`; actualiza el campo de estado en `state.json` y añade una entrada a `progress.md`.
+4. **Planificador (cierre)** — actualiza el contrato al estado terminal (`fulfilled`, o `violated`/`expired` según `governance`); actualiza el campo de estado en `state.json` y añade una entrada a `progress.md`.
 5. **Parada obligatoria** — al cerrar la sesión (D9), el orquestador ejecuta el checkpoint humano antes de que se decida arrancar la siguiente sesión.
 
 ### Dónde ver el estado
 
 | Fichero | Qué muestra |
 |---|---|
-| `state.json` | Estado de cada bloque/tarea: `pending` / `in_progress` / `complete` / `failed`. |
+| `state.json` | Estado de cada bloque/tarea: `drafted` / `active` / `fulfilled` / `violated` / `expired` / `terminated` (D17), y presupuesto `R` por bloque. |
 | `progress.md` | Notas de sesión append-only: qué se hizo, veredicto del evaluador, bugs, siguiente paso. |
 | `tasks/{B}-{slug}.json` | Contrato activo: `status`, `acceptance_criteria`, `audit_trail`. |
 
@@ -184,7 +189,7 @@ Crear el primer ADR en `docs/architecture/decisions.md` con la decisión de capa
 Todo lo que vive en `adapters/claude-code/` es vendor-specific:
 
 - Los ficheros `agents/*.md` usan el formato de subagente de Claude Code (frontmatter YAML + body con `tools`).
-- La skill `skills/harness/SKILL.md` usa el trigger y el formato de Claude Code.
+- La skill `skills/eng-harness/SKILL.md` usa el trigger y el formato de Claude Code.
 - El plugin manifest `.claude-plugin/` es específico del marketplace de Claude Code.
 
 ### Qué es portable

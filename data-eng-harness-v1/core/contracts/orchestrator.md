@@ -5,7 +5,7 @@
 > sesión y la secuencia de cierre al final (ver `core/orchestration/session-protocol.md`).
 
 ## Entradas
-- `state.json` (índice de bloques/tareas y su campo de estado: `pending`/`in_progress`/`complete`/`failed`)
+- `state.json` (índice de bloques/tareas y su campo de estado: `drafted`/`active`/`fulfilled`/`violated`/`expired`/`terminated`, alineado con el lifecycle del contrato; D17)
 - `progress.md` (última entrada de sesión: qué se hizo, bugs, siguiente paso)
 - Ruta del contrato JSON de la tarea activa (`tasks/{bloque}-{slug}.json`)
 - Veredicto del evaluador (`APTO` / `NO APTO` + defectos)
@@ -18,7 +18,10 @@
 - Invocación al planificador para cierre (con veredicto del evaluador)
 - Tras cada invocación de subagente: una entrada en `resource_usage.by_agent` del contrato con los
   datos del bloque `<usage>` devuelto (`tokens`, `tool_uses`, `duration_seconds`) y `task_total`
-  recalculado (D16; ver "Telemetría de uso" más abajo)
+  recalculado (D16); y el recálculo de `resource_usage.budget_status` contra `governance.R`, con
+  parada del ciclo si se rompe una cota (D17; ver "Gobernanza de recursos" más abajo)
+- Al invocar a cada subagente: inyección en su prompt del presupuesto restante de `governance.R`
+  (`R − task_total`), para que se autorregule (soft enforcement, D17)
 - Al cierre de sesión: commit (solo si `APTO`, "una tarea verificada = un commit", D13(a)),
   `state.json` y `progress.md` actualizados, checkpoint según la política activa (D12:
   `validacion-por-tarea` o `full-auto`)
@@ -27,12 +30,13 @@
 
 ## Criterio de "done" por iteración
 El orquestador considera una iteración completa cuando:
-1. El planificador ha marcado el contrato como `in_progress` y actualizado el campo de estado de la
+1. El planificador ha marcado el contrato como `active` y actualizado el campo de estado de la
    tarea en `state.json`.
 2. El implementador ha producido todos los artefactos listados en `artifacts.output` del contrato.
 3. El evaluador ha emitido veredicto `APTO`.
-4. El planificador ha marcado el contrato como `complete` y el campo de estado de la tarea en
-   `state.json` como `complete`.
+4. El consumo se mantuvo dentro de `governance.R` y `governance.T` (no se disparó `hard_halt`).
+5. El planificador ha marcado el contrato como `fulfilled` y el campo de estado de la tarea en
+   `state.json` como `fulfilled`.
 
 Si el evaluador emite `NO APTO`, el orquestador reinicia desde el implementador con los defectos
 como contexto adicional, partiendo de los artefactos que quedan en el working tree (máximo 2
@@ -86,12 +90,13 @@ tarea activa implica:
 1. Una operación DDL/DML destructiva, o que actúa contra sistemas de un cliente.
 2. Cualquier modificación de `hard_spec.md`.
 
-Estos checkpoints son un invariante del **protocolo de sesión** (D9, §3.1.1), no de la política: ni
-`validacion-por-tarea` ni `full-auto` pueden degradarlos ni automatizarlos.
+Estos checkpoints son un invariante del **protocolo de sesión** (D9; ver
+`core/orchestration/session-protocol.md`), no de la política: ni `validacion-por-tarea` ni
+`full-auto` pueden degradarlos ni automatizarlos.
 
 ## Criterio de parada del bucle
 El bucle termina cuando:
-- Todos los bloques/tareas de `state.json` están en estado `complete`, **o**
+- Todos los bloques/tareas de `state.json` están en estado `fulfilled`, **o**
 - El orquestador recibe instrucción explícita del humano de detener (en el checkpoint de cierre de
   sesión).
 
@@ -154,6 +159,23 @@ subagente no puede medir su propio consumo.
 - **El consumo del propio orquestador no se contabiliza por entrada:** es coste de sesión, no de una
   invocación discreta.
 - Detalle del protocolo en `core/state-templates/handoff-protocol.md` §3.3.
+
+## Gobernanza de recursos (`governance`, D17)
+
+La telemetría (`resource_usage`) *mide*; `governance` *acota* (P15). El orquestador, además de
+registrar el coste, lo **hace cumplir** contra el presupuesto que el planificador declaró en
+`governance.R`/`T`:
+
+- **Soft enforcement (budget-aware prompting).** Al invocar a un subagente, el orquestador le inyecta
+  en el prompt el presupuesto restante (`R − task_total`) para que se autorregule.
+- **Hard enforcement.** Tras recalcular `task_total`, recalcula `resource_usage.budget_status`
+  (utilización por dimensión = `task_total / R`, `most_constrained`, señal `enforcement`). Si alguna
+  dimensión alcanza utilización 1, `enforcement = hard_halt`: el orquestador **detiene el ciclo**,
+  marca `status = violated` y escala al humano, sin esperar a que el subagente termine.
+- **Estado terminal causal.** El orquestador (o el planificador al cerrar) escribe el `status`
+  terminal correcto: `fulfilled` (APTO dentro de R y T), `violated` (cota de R/T rota o reintentos
+  agotados), `expired` (T superado), `terminated` (cancelación humana).
+- Detalle del protocolo en `core/state-templates/handoff-protocol.md` §3.4.
 
 ## Restricciones
 - El orquestador NO implementa ni evalúa directamente.

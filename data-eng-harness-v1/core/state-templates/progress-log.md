@@ -2,7 +2,7 @@
 
 > **Nota de migración (B10):** esta plantilla queda **retirada**. Su rol —registro append-only de
 > "quién hizo qué y cuándo" durante el ciclo de un bloque— queda subsumido por
-> `state-templates/progress.md` (D10, hard_spec.md §5):
+> `state-templates/progress.md` (D10; ver DESIGN.md §9):
 >
 > - Cada sesión añade una entrada al final de `progress.md` con qué se hizo, el veredicto del
 >   evaluador, bugs/hallazgos y el siguiente paso (ver la sección "Cómo añadir una entrada" de

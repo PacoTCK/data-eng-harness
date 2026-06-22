@@ -43,7 +43,7 @@
 
 ## Correspondencia con las 5 categorías de sensor de D11
 
-D11 (`hard_spec.md` §5) define **5 categorías** de sensor parametrizables que cada
+D11 (`DESIGN.md` §9) define **5 categorías** de sensor parametrizables que cada
 proyecto instancia en `project-template/stack-profile.yml`: lint SQL (con dialecto),
 typecheck/lint Python, validación de schema/contratos de datos, freshness/nulls/volumetría
 y tests de pipeline. Esta tabla relaciona cada uno de los 7 sensores del catálogo con la

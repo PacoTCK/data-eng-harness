@@ -4,10 +4,10 @@
     "naming_convention": "tasks/{BLOQUE_ID}-{slug}.json  —  ejemplo: tasks/B3-estado-handoff.json",
     "who_fills_what": {
       "_bidireccional": "El contrato es BIDIRECCIONAL (D13): no se cierra el ciclo planificador -> implementador -> evaluador con un handoff verbal de artefactos. El implementador anexa execution_summary al propio JSON; el evaluador lo lee como entrada junto a acceptance_criteria. El reparto exacto es:",
-      "planificador": "Rellena TODO el contrato inicial al crearlo: task_id, workflow_id, parent_block, created, title, purpose, context, acceptance_criteria, artifacts, fallback. Inicializa status=pending, audit_trail=[], pre_handoff_validation con todos los campos en false, y execution_summary vacío/con placeholders.",
+      "planificador": "Rellena TODO el contrato inicial al crearlo: task_id, workflow_id, parent_block, created, title, purpose, context, acceptance_criteria, artifacts, fallback, y el bloque governance (R/T/Ψ y la referencia de conservación al presupuesto del bloque padre, D17). Inicializa status=drafted, audit_trail=[], pre_handoff_validation con todos los campos en false, execution_summary vacío/con placeholders, y resource_usage con by_agent=[], task_total a cero y budget_status a cero. No edita governance después de crearlo.",
       "implementador": "Al recibir el contrato, confirma pre_handoff_validation marcando cada campo true. Solo procede si ready_to_proceed=true. Añade entrada al audit_trail al comenzar y al terminar. Al terminar, escribe SOLO el bloque execution_summary (qué hizo, decisiones y su porqué, desviaciones respecto al plan, artefactos realmente producidos). No modifica purpose, context, acceptance_criteria, artifacts.output ni status.",
       "evaluador": "Lee acceptance_criteria + execution_summary como entrada (en vez de recibir una lista verbal de artefactos del orquestador). Añade entrada al audit_trail con el veredicto. No modifica ningún otro campo, incluido execution_summary.",
-      "orquestador": "Actualiza status al invocar al implementador (in_progress). Tras recibir el veredicto del evaluador, el planificador (o el orquestador, según el reparto vigente) escribe SOLO el campo status (complete o failed). No transmite verbalmente la lista de artefactos producidos: esa información vive en execution_summary. ADEMÁS (D16): es el ÚNICO agente que rellena resource_usage — tras cada invocación de subagente añade una entrada a resource_usage.by_agent con los datos del bloque <usage> devuelto (tokens, tool_uses, duration_seconds) y recalcula resource_usage.task_total. Los subagentes no escriben este bloque: no pueden medir su propio consumo."
+      "orquestador": "Actualiza status al invocar al implementador (active). Tras recibir el veredicto del evaluador, el planificador (o el orquestador, según el reparto vigente) escribe SOLO el campo status al estado terminal correcto (fulfilled | violated | expired | terminated, ver _status_semantics). No transmite verbalmente la lista de artefactos producidos: esa información vive en execution_summary. ADEMÁS (D16): es el ÚNICO agente que rellena resource_usage — tras cada invocación de subagente añade una entrada a resource_usage.by_agent con los datos del bloque <usage> devuelto (tokens, tool_uses, duration_seconds) y recalcula resource_usage.task_total. Los subagentes no escriben este bloque: no pueden medir su propio consumo. ENFORCEMENT (D17): tras recalcular task_total, recalcula resource_usage.budget_status comparándolo contra governance.R; si alguna cota se rompe (utilización >= 1) detiene el ciclo, marca status=violated y escala al humano (hard enforcement). En el prompt de cada subagente inyecta el presupuesto restante de R (soft enforcement / budget-aware prompting)."
     }
   },
 
@@ -16,9 +16,10 @@
   "parent_block": "{BLOQUE_ID}",
   "created": "YYYY-MM-DD",
   "handoff_type": "planner_to_implementador",
-  "status": "pending",
+  "status": "drafted",
 
-  "_status_values": "pending | in_progress | complete | failed",
+  "_status_values": "drafted | active | fulfilled | violated | expired | terminated",
+  "_status_semantics": "Lifecycle del contrato (P15/D17; ver DESIGN.md §3.7): drafted (parámetros especificados, sin activar) -> active (recursos reservados, monitorización en curso) -> EXACTAMENTE UNO de los estados terminales: fulfilled (acceptance_criteria cumplidos dentro de R y T), violated (rota una cota de governance.R o governance.T — incluye los reintentos agotados tras NO APTO), expired (superado governance.T), terminated (cancelación externa del humano). Mapeo desde el esquema previo: pending->drafted, in_progress->active, complete->fulfilled, failed->violated|expired.",
 
   "title": "{Título corto e imperativo de la tarea — máx. 10 palabras}",
   "purpose": "{Descripción detallada de qué hay que hacer y por qué — 1 a 3 párrafos. Incluye el objetivo, el contexto de diseño relevante y por qué esta tarea es necesaria en este momento del proyecto.}",
@@ -61,7 +62,7 @@
       "timestamp": "YYYY-MM-DD HH:MM",
       "agent": "planificador",
       "action": "Contrato creado",
-      "result": "status → pending"
+      "result": "status → drafted"
     }
   ],
 
@@ -75,13 +76,46 @@
     ]
   },
 
+  "governance": {
+    "_instructions": "Gobernanza de recursos ex-ante (P15/D17; ver DESIGN.md §3.7). Lo rellena el PLANIFICADOR al crear el contrato y NO se modifica después. R y T son cotas DECLARADAS antes de activar; el orquestador las hace cumplir comparando resource_usage.task_total contra R tras cada invocación (ver who_fills_what.orquestador y resource_usage.budget_status). Distinción clave: R (cuánto puede CONSUMIR el ciclo) es independiente de artifacts.input (qué RECIBE el agente) — un input pequeño puede quemar muchos tokens razonando.",
+    "R": {
+      "_doc": "Presupuesto multidimensional del CICLO COMPLETO de esta tarea (suma de todas las invocaciones de subagente). Constraint: para cada dimensión, consumo <= presupuesto.",
+      "tokens": 80000,
+      "invocations": 4,
+      "retries": 1
+    },
+    "T": {
+      "_doc": "Cota temporal (D17). ttl_sessions: nº de sesiones de trabajo antes de expirar. deadline: fecha absoluta opcional YYYY-MM-DD (null si no aplica).",
+      "ttl_sessions": 1,
+      "deadline": null
+    },
+    "termination_conditions": [
+      "budget_exhausted: para alguna dimensión de R, task_total >= R (-> status=violated)",
+      "expired: superado T.ttl_sessions o T.deadline (-> status=expired)",
+      "cancelled: señal externa del humano (-> status=terminated)"
+    ],
+    "conservation": {
+      "_doc": "Ley de conservación (D17): la suma de los presupuestos de las tareas de un bloque no excede el presupuesto del bloque padre. Se verifica contra state.json al crear el contrato.",
+      "parent_block_budget_ref": "state.json#blocks.{PARENT_BLOCK}.R.tokens",
+      "invariant": "Σ(R.tokens de las tareas del bloque) <= presupuesto del bloque padre"
+    }
+  },
+
   "resource_usage": {
-    "_instructions": "Telemetría de coste del ciclo (D16, resuelve parcialmente R5; materia prima del tuning loop P10). La rellena EXCLUSIVAMENTE el orquestador, que es el único agente que recibe el bloque de uso (<usage>) de cada invocación de subagente; los subagentes no pueden medir su propio consumo y NO escriben aquí. El planificador inicializa by_agent=[] y task_total a cero al crear el contrato. by_agent es append-only: una entrada por invocación de subagente (incluidos los reintentos tras NO APTO, que añaden entradas nuevas con invocation incrementado, no sobrescriben). task_total es el agregado que el orquestador recalcula tras cada entrada. duration_seconds es el tiempo de pared (wall-clock) de la invocación, en segundos enteros. El consumo del propio orquestador (hilo principal) no se contabiliza por entrada: es coste de sesión, no de invocación.",
+    "_instructions": "Telemetría de coste del ciclo (D16; consumo medido contra governance.R desde D17; materia prima del tuning loop P10). La rellena EXCLUSIVAMENTE el orquestador, que es el único agente que recibe el bloque de uso (<usage>) de cada invocación de subagente; los subagentes no pueden medir su propio consumo y NO escriben aquí. El planificador inicializa by_agent=[], task_total y budget_status a cero al crear el contrato. by_agent es append-only: una entrada por invocación de subagente (incluidos los reintentos tras NO APTO, que añaden entradas nuevas con invocation incrementado, no sobrescriben). task_total es el agregado que el orquestador recalcula tras cada entrada. duration_seconds es el tiempo de pared (wall-clock) de la invocación, en segundos enteros. El consumo del propio orquestador (hilo principal) no se contabiliza por entrada: es coste de sesión, no de invocación.",
     "_agent_values": "planificador | navegador | implementador | evaluador",
     "by_agent": [
       {"agent": "{rol del subagente invocado}", "invocation": 1, "tokens": 0, "tool_uses": 0, "duration_seconds": 0}
     ],
-    "task_total": {"invocations": 0, "tokens": 0, "tool_uses": 0, "duration_seconds": 0}
+    "task_total": {"invocations": 0, "tokens": 0, "tool_uses": 0, "duration_seconds": 0},
+    "budget_status": {
+      "_instructions": "Enforcement (D17; ver DESIGN.md §3.7). El orquestador lo recalcula tras cada entrada de by_agent: utilización por dimensión = task_total / governance.R (u = c/b). most_constrained es la dimensión con mayor utilización. enforcement = soft_warn mientras todas las dimensiones < 1; hard_halt en cuanto alguna alcanza 1 (entonces el orquestador detiene el ciclo, marca status=violated y escala al humano).",
+      "tokens_pct": 0,
+      "invocations_pct": 0,
+      "retries_pct": 0,
+      "most_constrained": null,
+      "enforcement": "soft_warn"
+    }
   },
 
   "fallback": {
@@ -101,7 +135,7 @@
       "steps": "Producir los artefactos igualmente. Añadir entrada al audit_trail con acción 'Fallback: on_low_confidence' y descripción de la incertidumbre. El evaluador recibe la señal y aplica criterio más estricto. Si el evaluador emite NO APTO, el orquestador escala al humano antes del segundo intento."
     },
     "on_timeout": {
-      "condition": "El contrato lleva más de {TIMEOUT_DEFINIDO_POR_PROYECTO} sin avanzar de estado (pendiente → in_progress, o in_progress sin artefactos).",
+      "condition": "Se supera la cota temporal governance.T (ttl_sessions o deadline) sin alcanzar un estado terminal, o el contrato lleva una sesión en 'active' sin producir artefactos.",
       "action": "escalate_to_human_con_estado_actual",
       "steps": "Añadir entrada al audit_trail con acción 'Fallback: on_timeout'. El orquestador registra el estado actual de los artefactos parciales (si los hay) y notifica al humano con el contexto suficiente para decidir si continuar, reformular o cancelar."
     },

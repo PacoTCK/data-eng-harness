@@ -5,13 +5,19 @@
 ## Entradas
 - `state.json` (índice de bloques/tareas y su campo de estado actual)
 - `progress.md` (última entrada de sesión: qué se hizo, bugs, siguiente paso)
-- `hard_spec.md` (plan completo, bloques, criterios de aceptación — qué/por qué)
+- `soft_spec.md` **del proyecto** (objetivo en lenguaje natural, escrito por el humano) — entrada de
+  la **derivación inicial** `soft_spec → hard_spec` (D18), la primera vez que se ejecuta el ciclo
+- `hard_spec.md` **del proyecto** (plan completo, bloques, criterios de aceptación — qué/por qué;
+  derivado del `soft_spec.md`, D18)
 - Contrato JSON de la tarea activa (si se le pasa para actualización de estado)
 - Veredicto del evaluador (cuando se invoca para cierre de bloque)
 - Brief del navegador (si necesita investigación — el planificador puede spawnear al navegador directamente)
 
 ## Salidas
-- Contrato JSON de handoff en `tasks/{bloque}-{slug}.json` (nuevo o actualizado)
+- Contrato JSON de handoff en `tasks/{bloque}-{slug}.json` (nuevo o actualizado). Al crearlo, rellena
+  el bloque `governance` (presupuesto `R`, cota temporal `T`, condiciones de terminación `Ψ`) y
+  verifica la **ley de conservación**: Σ(presupuestos `R.tokens` de las tareas del bloque) ≤
+  presupuesto del bloque padre en `state.json` (D17)
 - `state.json` actualizado (campo de estado de la tarea/bloque correspondiente)
 - `progress.md` con una nueva entrada de sesión (append-only)
 - Resumen de `acceptance_criteria` y `artifacts.output` para el orquestador
@@ -25,9 +31,13 @@ El planificador completa su turno cuando:
 
 ## Criterio de parada
 El planificador no tiene bucle propio. Es invocado por el orquestador en momentos puntuales:
-1. Al inicio de la tarea: marca `in_progress` en el contrato y en `state.json`.
-2. Al cierre de la tarea: marca `complete` o `failed` según veredicto en el contrato y en
-   `state.json`, y añade la entrada de cierre a `progress.md`.
+0. Primera vez en el proyecto (no existe `hard_spec.md`): deriva el `hard_spec.md` del `soft_spec.md`
+   e inicializa `state.json` (D18). Si falta el `soft_spec.md`, escala al humano.
+1. Al inicio de la tarea: marca `active` en el contrato y en `state.json`.
+2. Al cierre de la tarea: marca el estado terminal correcto (`fulfilled` si APTO dentro de R/T;
+   `violated` si se rompió una cota de `governance` o se agotaron los reintentos; `expired` si se
+   superó `T`) según veredicto en el contrato y en `state.json`, y añade la entrada de cierre a
+   `progress.md`.
 
 ## Restricciones
 - No invoca al implementador ni al evaluador (eso es responsabilidad del orquestador).

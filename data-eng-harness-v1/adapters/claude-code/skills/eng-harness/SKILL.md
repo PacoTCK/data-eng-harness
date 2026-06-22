@@ -29,7 +29,8 @@ definidos en `adapters/claude-code/agents/`.
   ▼
 [secuencia de re-entrada]
   │
-  ├─► leer state.json → identificar tarea in_progress o siguiente pending
+  ├─► leer state.json → identificar tarea active o siguiente drafted
+  │     (primera vez sin hard_spec.md: derivarlo del soft_spec.md, D18)
   ├─► leer última entrada de progress.md
   ├─► inspeccionar git log -N (baseline)
   │
@@ -44,8 +45,8 @@ orquestador (esta sesión)
   ├─► evaluador         → verifica artefactos, emite APTO / NO APTO
   │
   └─► planificador      → registra veredicto en el JSON y en state.json
-        ├─► si APTO    → status: complete
-        └─► si NO APTO → reintentar implementador (máx. 2 veces) o failed
+        ├─► si APTO    → status: fulfilled
+        └─► si NO APTO → reintentar implementador (máx. 2 veces) o violated
   │
   ▼
 [secuencia de cierre]
@@ -66,7 +67,7 @@ artefactos de estado de `core/state-templates/` (`state.json`,
 `progress.md`). Este paso se ejecuta **una vez por proyecto** y es
 **idempotente**: si los artefactos ya existen (con cualquier contenido), no
 hace nada y la secuencia continúa directamente en el paso de re-entrada
-siguiente (D9). Ver `hard_spec.md` §5 D14 para el mecanismo completo.
+siguiente (D9). Ver `DESIGN.md` §9 (D14) para el mecanismo completo.
 
 1. **Detección**: `Glob`/`Read` para comprobar si `project-template/` (o su
    equivalente ya materializado/renombrado por el proyecto) y
@@ -105,8 +106,9 @@ sin depender de la memoria de sesiones anteriores (D9,
    resuelve (p. ej. arnés copiado en el repo en vez de instalado como plugin),
    usar la raíz local `data-eng-harness-v1/` como `PLUGIN_ROOT`.
 1. `Read("state.json")` — leer el índice de bloques/tareas y su `status`.
-2. Identificar la tarea activa (`in_progress`) o, si no hay ninguna, la
-   siguiente `pending`.
+2. Identificar la tarea activa (`active`) o, si no hay ninguna, la
+   siguiente `drafted`. Si el proyecto aún no tiene `hard_spec.md`, derivarlo
+   del `soft_spec.md` antes de continuar (D18).
 3. `Read("progress.md")` — leer la última entrada (qué se hizo, bugs
    conocidos, siguiente paso).
 4. Inspeccionar el historial de control de versiones (p. ej. `git log -N`)
@@ -125,11 +127,12 @@ Invocar al planificador como primer paso obligatorio, sin excepción:
 ```
 Agent(subagent_type: "planificador", prompt: "
   Tu contrato está en {PLUGIN_ROOT}/core/contracts/planificador.md — léelo primero (paso 0).
-  Lee state.json y progress.md (secuencia de re-entrada D9), y hard_spec.md.
-  Identifica la tarea in_progress o, si no hay ninguna, la siguiente pending.
-  Produce o actualiza el contrato JSON de handoff en tasks/. Actualiza
-  state.json con status in_progress para esa tarea. Devuelve: ruta del
-  contrato JSON, lista de acceptance_criteria y lista de artifacts.output.
+  Lee state.json y progress.md (secuencia de re-entrada D9), y el hard_spec.md del proyecto.
+  Si no existe hard_spec.md, derívalo del soft_spec.md primero (D18).
+  Identifica la tarea active o, si no hay ninguna, la siguiente drafted.
+  Produce o actualiza el contrato JSON de handoff en tasks/ (incluido el bloque
+  governance R/T, D17). Actualiza state.json con status active para esa tarea.
+  Devuelve: ruta del contrato JSON, lista de acceptance_criteria y lista de artifacts.output.
 ")
 ```
 
@@ -172,10 +175,10 @@ Agent(subagent_type: "planificador", prompt: "
   Tu contrato está en {PLUGIN_ROOT}/core/contracts/planificador.md — léelo primero (paso 0).
   El evaluador ha emitido veredicto {APTO|NO APTO} para la tarea {task_id}.
   Defectos: {lista_defectos_si_los_hay}.
-  Actualiza el contrato JSON en {ruta_contrato} (status: complete/failed).
-  Actualiza state.json con el campo de estado correspondiente (complete si
-  APTO; in_progress si NO APTO con reintentos disponibles; failed si NO APTO
-  en el segundo intento). Añade una entrada nueva al final de progress.md
+  Actualiza el contrato JSON en {ruta_contrato} (status: fulfilled/violated/expired).
+  Actualiza state.json con el campo de estado correspondiente (fulfilled si
+  APTO; active si NO APTO con reintentos disponibles; violated si NO APTO
+  en el segundo intento, o expired si se superó governance.T). Añade una entrada nueva al final de progress.md
   siguiendo el formato de core/state-templates/progress.md.
 ")
 ```
@@ -187,7 +190,7 @@ Tras el paso 5, el orquestador ejecuta la secuencia de cierre de
 
 1. **Veredicto del evaluador** ya disponible (paso 4).
 2. **Commit solo si `APTO`.** Si el veredicto es `NO APTO`, no se confirma
-   ningún cambio en el repositorio; la tarea permanece `in_progress` para la
+   ningún cambio en el repositorio; la tarea permanece `active` para la
    siguiente sesión, con los defectos anotados en `progress.md` (paso 5).
 3. **Estado actualizado**: `state.json` y `progress.md` ya actualizados por
    el planificador en el paso 5.
@@ -242,9 +245,10 @@ sesión", D9).
 
 | Fichero | Propósito |
 |---------|-----------|
-| `state.json` | Capa de estado: índice de bloques/tareas y su `status` (`pending`/`in_progress`/`complete`/`failed`) |
+| `state.json` | Capa de estado: índice de bloques/tareas y su `status` (`drafted`/`active`/`fulfilled`/`violated`/`expired`/`terminated`, D17) + presupuesto `R` por bloque |
 | `progress.md` | Notas de sesión, append-only: qué se hizo, veredicto, bugs, siguiente paso |
-| `hard_spec.md` | Plan completo: bloques, criterios, artefactos |
+| `soft_spec.md` | Objetivo del proyecto en lenguaje natural (input humano); origen del `hard_spec.md` (D18) |
+| `hard_spec.md` | Plan completo del proyecto: bloques, criterios, artefactos (derivado del `soft_spec.md`) |
 | `tasks/{B}-{slug}.json` | Contrato de handoff activo (producido por el planificador) |
 | `core/orchestration/cycle.md` | Definición model-agnostic del ciclo de 4 agentes (fuente de verdad del patrón) |
 | `core/orchestration/session-protocol.md` | Definición model-agnostic del protocolo de sesión (D9): re-entrada, ciclo, cierre, checkpoint |

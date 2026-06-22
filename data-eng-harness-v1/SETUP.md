@@ -50,7 +50,7 @@ completo en `README.md`, sección "Instalación y compartición (The Cocktail)".
 ### 2.2 Copiar la plantilla de proyecto
 
 > Este paso manual es el **fallback** documentado del paso 0 automático de
-> bootstrap (D14, `hard_spec.md` §5) que ejecuta la skill `eng-harness` al
+> bootstrap (D14; ver `DESIGN.md` §9) que ejecuta la skill `eng-harness` al
 > primer uso del proyecto. Normalmente **no es necesario ejecutarlo a mano**:
 > la skill detecta si `project-template/` y los artefactos de estado ya
 > existen y, si faltan, los copia desde la instalación del arnés. Usa este
@@ -65,8 +65,9 @@ cp -r data-eng-harness-v1/project-template/ {ruta_del_nuevo_proyecto}/
 
 Copiar al proyecto las plantillas de `core/state-templates/`:
 
-- `state.json` — índice de bloques/tareas con su `status` (`pending` /
-  `in_progress` / `complete` / `failed`).
+- `state.json` — índice de bloques/tareas con su `status` (`drafted` /
+  `active` / `fulfilled` / `violated` / `expired` / `terminated`, D17) y
+  presupuesto `R` por bloque.
 - `progress.md` — notas de sesión, append-only.
 - `dudas.md` — preguntas abiertas al cliente o al equipo.
 
@@ -84,11 +85,24 @@ Copiar al proyecto las plantillas de `core/state-templates/`:
 - `docs/architecture/decisions.md` — primeros ADRs (capas y stack), para que
   el agente tenga contexto verificable sin preguntar.
 
-### 2.5 Tener un plan del proyecto (hard_spec.md)
+### 2.5 El spec del proyecto: `soft_spec.md` → `hard_spec.md` (D18)
 
-El planificador necesita un fichero equivalente a `hard_spec.md` con los
-objetivos y criterios de cada bloque del proyecto. Sin él no hay tareas que
-el planificador pueda identificar como activas o pendientes.
+El arnés deriva el plan del proyecto en dos pasos:
+
+1. **Escribir el `soft_spec.md`.** El bootstrap (D14) scaffolda
+   `project-template/soft_spec.md` en el repo del proyecto. Rellénalo con el
+   objetivo en lenguaje natural: qué se quiere construir, fuentes de datos,
+   entregables y restricciones. Es el único input que el humano redacta a mano.
+2. **Derivar el `hard_spec.md`.** En la primera sesión del ciclo, el
+   planificador lee el `soft_spec.md` y produce el `hard_spec.md` del proyecto:
+   el plan curado con bloques, criterios de aceptación y decisiones de diseño.
+   Es la memoria casi inmutable del proyecto y lo que el planificador consulta
+   en cada iteración posterior.
+
+> Sin `hard_spec.md` no hay bloques que el planificador pueda identificar como
+> activos o pendientes; sin `soft_spec.md` no hay de dónde derivarlo. El
+> meta-proyecto del arnés es la instancia de referencia de este flujo (su
+> propio `soft_spec.md` → `hard_spec.md`).
 
 ---
 
@@ -102,7 +116,7 @@ el planificador pueda identificar como activas o pendientes.
 
 Cada invocación de `/eng-harness` procesa como máximo una tarea (regla "una
 tarea por sesión", D9). El detalle del ciclo está en
-`adapters/claude-code/skills/harness/SKILL.md` y `core/orchestration/cycle.md`.
+`adapters/claude-code/skills/eng-harness/SKILL.md` y `core/orchestration/cycle.md`.
 
 ---
 

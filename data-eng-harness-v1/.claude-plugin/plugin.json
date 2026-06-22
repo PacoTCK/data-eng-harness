@@ -18,5 +18,5 @@
   ],
   "agents": "./adapters/claude-code/agents",
   "skills": "./adapters/claude-code/skills",
-  "_root_note": "La raíz del plugin es data-eng-harness-v1/ (NO adapters/claude-code/). Esto hace el plugin autocontenido: core/, project-template/ y docs/ quedan bajo ${CLAUDE_PLUGIN_ROOT}, accesibles en runtime tras /plugin install. Los campos agents/skills apuntan a la capa vendor-specific (Claude Code) en adapters/claude-code/; el core portable y model-agnostic vive en ./core/. Para sustituir Claude Code por otro runtime, reemplazar adapters/claude-code/ manteniendo el core intacto (hard_spec.md §3.3, objetivo O3)."
+  "_root_note": "La raíz del plugin es data-eng-harness-v1/ (NO adapters/claude-code/). Esto hace el plugin autocontenido: core/, project-template/ y docs/ quedan bajo ${CLAUDE_PLUGIN_ROOT}, accesibles en runtime tras /plugin install. Los campos agents/skills apuntan a la capa vendor-specific (Claude Code) en adapters/claude-code/; el core portable y model-agnostic vive en ./core/. Para sustituir Claude Code por otro runtime, reemplazar adapters/claude-code/ manteniendo el core intacto (ver DESIGN.md §4.4, objetivo O3)."
 }

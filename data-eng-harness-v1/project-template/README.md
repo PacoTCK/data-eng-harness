@@ -1,1 +1,1 @@
-Plantilla de configuración por-proyecto: CLAUDE.md índice, docs/ estructurado y convenciones de stack de datos.
+Plantilla de configuración por-proyecto: `soft_spec.md` (objetivo del proyecto en lenguaje natural, del que el planificador deriva el `hard_spec.md`, D18), `CLAUDE.md` índice, `docs/` estructurado y convenciones de stack de datos.

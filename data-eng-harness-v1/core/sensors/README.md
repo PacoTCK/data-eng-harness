@@ -37,4 +37,4 @@ El formato es **idéntico en todos los sensores** para que el agente pueda proce
 2. Crea un fichero `.md` en la subcarpeta correspondiente siguiendo la plantilla de los sensores existentes.
 3. Añade una fila al `catalog.md`.
 4. Asigna un ID único con prefijo `FF-` (fast-feedback) o `DP-` (drift-periódico).
-5. No codifiques herramientas concretas de stack en el sensor: declara la **categoría** (D11, hard_spec.md §5) que cubre y referencia `project-template/stack-profile.yml` para la implementación concreta que cada proyecto instancia.
+5. No codifiques herramientas concretas de stack en el sensor: declara la **categoría** (D11, DESIGN.md §9) que cubre y referencia `project-template/stack-profile.yml` para la implementación concreta que cada proyecto instancia.

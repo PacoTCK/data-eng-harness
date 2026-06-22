@@ -4,7 +4,7 @@
 > escala, y cómo esa parada se refleja en el cierre de sesión (D9).
 
 ## Parada normal
-- Todos los bloques/tareas de `state.json` están en estado `complete` — proyecto completado.
+- Todos los bloques/tareas de `state.json` están en estado `fulfilled` — proyecto completado.
 
 ## Parada por intervención humana
 - El humano envía una instrucción explícita de detener (en cualquier momento del ciclo, incluido el
@@ -28,7 +28,7 @@ aprobación humana explícita.
 
 ## Parada por NO APTO y recuperación con git (D13)
 
-Cuando el `evaluador` emite `NO APTO`, no hay parada inmediata: la tarea permanece `in_progress` y
+Cuando el `evaluador` emite `NO APTO`, no hay parada inmediata: la tarea permanece `active` y
 los artefactos producidos quedan en el working tree (no se commitean ni se descartan), de modo que
 la siguiente sesión reintenta a partir de ellos con los defectos del evaluador anotados en el
 contrato y en `progress.md` (ver "Secuencia de cierre" en `session-protocol.md`).
@@ -56,8 +56,8 @@ Se produce cuando:
 4. La tarea activa implica un **checkpoint duro** (ver arriba), en cualquier política de checkpoint.
 
 En estos casos, el orquestador:
-1. Persiste el estado: contrato JSON con `status: failed` o `in_progress`, y `state.json` con el
-   campo de estado de la tarea reflejando `in_progress` o `failed` según corresponda.
+1. Persiste el estado: contrato JSON con `status: violated`/`expired` o `active`, y `state.json` con el
+   campo de estado de la tarea reflejando `active`, `violated` o `expired` según corresponda.
 2. Añade una entrada a `progress.md` describiendo el bloqueo y la decisión pendiente (parte del
    cierre de sesión, ver `session-protocol.md`).
 3. Informa al humano del punto exacto de bloqueo y qué decisión necesita (este es el checkpoint

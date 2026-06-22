@@ -60,6 +60,8 @@ Ver invariantes y contratos de cada capa en `docs/architecture/data-layers.md`.
 
 | Qué busco | Dónde está |
 |---|---|
+| Objetivo del proyecto (lenguaje natural) | `soft_spec.md` (de él se deriva el `hard_spec.md`, D18) |
+| Plan curado: bloques y criterios | `hard_spec.md` (derivado del `soft_spec.md`) |
 | Decisiones de arquitectura (ADRs) | `docs/architecture/decisions.md` |
 | Capas de datos y sus invariantes | `docs/architecture/data-layers.md` |
 | Catálogo de pipelines | `docs/pipelines/index.md` |
